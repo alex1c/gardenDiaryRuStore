@@ -138,7 +138,7 @@ export class PlantCatalogRepository {
   }
 
   /**
-   * Deletes a catalog item. Fails (RESTRICT) if plantings still reference it.
+   * Deletes a catalog item. Fails while plantings still reference it.
    */
   delete(id: string): boolean {
     try {

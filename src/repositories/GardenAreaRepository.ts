@@ -50,6 +50,8 @@ export class GardenAreaRepository {
       throw new StorageError('Area name is required');
     }
     assertAreaType(input.type);
+    assertOptionalPositiveFinite(input.length, 'Area length');
+    assertOptionalPositiveFinite(input.width, 'Area width');
 
     const now = nowIsoUtc();
     const area: GardenArea = {
@@ -125,6 +127,8 @@ export class GardenAreaRepository {
     if (input.type !== undefined) {
       assertAreaType(input.type);
     }
+    assertOptionalPositiveFinite(input.length, 'Area length');
+    assertOptionalPositiveFinite(input.width, 'Area width');
 
     const next: GardenArea = {
       ...existing,
@@ -201,4 +205,14 @@ function emptyToNull(value: string | null | undefined): string | null {
   if (value === undefined || value === null) return null;
   const trimmed = value.trim();
   return trimmed.length === 0 ? null : trimmed;
+}
+
+function assertOptionalPositiveFinite(
+  value: number | null | undefined,
+  label: string
+): void {
+  if (value === undefined || value === null) return;
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new StorageError(`${label} must be a positive finite number`);
+  }
 }

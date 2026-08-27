@@ -26,6 +26,8 @@ describe('localDate', () => {
 
   test('rejects invalid calendar dates', () => {
     expect(isValidLocalDateString('2026-02-30')).toBe(false);
+    expect(isValidLocalDateString('2027-02-29')).toBe(false);
+    expect(isValidLocalDateString('2028-02-29')).toBe(true);
     expect(() => parseLocalDate('2026-02-30')).toThrow();
   });
 

@@ -66,6 +66,8 @@ export class PlantingRepository {
     assertOptionalLocalDate(input.sowingDate);
     assertOptionalLocalDate(input.transplantDate);
     assertOptionalLocalDate(input.harvestStartDate);
+    assertOptionalPositiveFinite(input.quantity, 'Planting quantity');
+    this.assertSameGarden(input.seasonId, input.catalogItemId, input.areaId ?? null);
 
     const now = nowIsoUtc();
     const planting: Planting = {
@@ -157,6 +159,7 @@ export class PlantingRepository {
     assertOptionalLocalDate(input.sowingDate);
     assertOptionalLocalDate(input.transplantDate);
     assertOptionalLocalDate(input.harvestStartDate);
+    assertOptionalPositiveFinite(input.quantity, 'Planting quantity');
 
     const next: Planting = {
       ...existing,
@@ -179,6 +182,7 @@ export class PlantingRepository {
       notes: input.notes !== undefined ? emptyToNull(input.notes) : existing.notes,
       updatedAt: nowIsoUtc(),
     };
+    this.assertSameGarden(next.seasonId, next.catalogItemId, next.areaId);
 
     try {
       this.db.run(
@@ -216,6 +220,36 @@ export class PlantingRepository {
       return result.changes > 0;
     } catch (err) {
       throw new StorageError('Failed to delete planting', err);
+    }
+  }
+
+  private assertSameGarden(
+    seasonId: string,
+    catalogItemId: string,
+    areaId: string | null
+  ): void {
+    const row = this.db.getFirst<{ season_garden_id: string; catalog_garden_id: string; area_garden_id: string | null }>(
+      `SELECT s.garden_id AS season_garden_id,
+              c.garden_id AS catalog_garden_id,
+              a.garden_id AS area_garden_id
+       FROM seasons s
+       JOIN plant_catalog_items c ON c.id = ?
+       LEFT JOIN garden_areas a ON a.id = ?
+       WHERE s.id = ?`,
+      [catalogItemId, areaId, seasonId]
+    );
+
+    if (!row) {
+      throw new StorageError('Planting references a missing season or catalog item');
+    }
+    if (areaId !== null && row.area_garden_id === null) {
+      throw new StorageError('Planting references a missing garden area');
+    }
+    if (
+      row.season_garden_id !== row.catalog_garden_id ||
+      (row.area_garden_id !== null && row.season_garden_id !== row.area_garden_id)
+    ) {
+      throw new StorageError('Planting references entities from different gardens');
     }
   }
 }
@@ -257,6 +291,16 @@ function assertOptionalLocalDate(value: LocalDate | null | undefined): void {
   if (value === undefined || value === null) return;
   if (!isValidLocalDateString(value)) {
     throw new StorageError(`Invalid local date: ${value}`);
+  }
+}
+
+function assertOptionalPositiveFinite(
+  value: number | null | undefined,
+  label: string
+): void {
+  if (value === undefined || value === null) return;
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new StorageError(`${label} must be a positive finite number`);
   }
 }
 

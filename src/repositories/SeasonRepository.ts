@@ -123,7 +123,7 @@ export class SeasonRepository {
         `SELECT id, garden_id, year, title, start_date, end_date, archived, created_at, updated_at
          FROM seasons
          WHERE garden_id = ? AND archived = 0
-         ORDER BY year DESC, created_at DESC
+         ORDER BY year DESC, created_at DESC, id DESC
          LIMIT 1`,
         [gardenId]
       );
@@ -154,6 +154,9 @@ export class SeasonRepository {
 
     if (!next.title) {
       throw new StorageError('Season title is required');
+    }
+    if (!Number.isInteger(next.year)) {
+      throw new StorageError('Season year must be an integer');
     }
 
     try {

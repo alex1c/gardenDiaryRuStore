@@ -29,4 +29,10 @@ describe('money kopecks', () => {
     expect(rublesToKopecks(123.45)).toBe(12345);
     expect(kopecksToRubles(12345)).toBeCloseTo(123.45);
   });
+
+  test('rejects non-finite and non-integer storage values', () => {
+    expect(() => rublesToKopecks(Infinity)).toThrow();
+    expect(() => rublesToKopecks(-1)).toThrow();
+    expect(() => kopecksToRubles(1.5)).toThrow();
+  });
 });

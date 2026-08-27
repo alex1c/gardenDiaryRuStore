@@ -14,7 +14,7 @@ Garden
 │   ├── GardenTask
 │   ├── GardenEvent
 │   ├── Expense
-│   └── GardenPhoto (season_id CASCADE)
+│   └── GardenPhoto (garden-owned; optional season link)
 ├── GardenArea
 └── PlantCatalogItem
 ```
@@ -45,10 +45,10 @@ UI v1 may show one garden; the schema supports many.
 
 | Parent deleted | Child behavior | Rationale |
 |----------------|----------------|-----------|
-| Garden | CASCADE seasons, areas, catalog | Plot ownership; no orphans |
+| Garden | CASCADE seasons, areas, catalog, photos | Plot ownership; no orphans |
 | Season | CASCADE plantings, tasks, events, harvests, expenses; CASCADE photos by `season_id` | Season-scoped history leaves with the season |
 | GardenArea | SET NULL on plantings / tasks / events / expenses / photos | Keep seasonal history without inventing a fake zone |
-| PlantCatalogItem | RESTRICT if plantings exist | Force conscious cleanup before removing a culture used in history |
+| PlantCatalogItem | NO ACTION if plantings exist | Protect history while allowing whole-Garden cascades to finish atomically |
 | Planting | CASCADE harvests; SET NULL on tasks / events / expenses / photos | Harvests are meaningless without planting; diary links stay |
 | GardenTask | SET NULL on `events.task_id` | Event history remains |
 | GardenEvent | SET NULL on `photos.event_id` | Photo row remains; file GC is a future service |
@@ -110,6 +110,7 @@ New keys can be added without schema migrations.
 3. Bump `CURRENT_SCHEMA_VERSION`.
 4. Runner applies pending versions inside transactions; re-open is idempotent.
 5. No destructive “wipe and recreate” on upgrade.
+6. Migration versions must be contiguous; startup rejects gaps and databases newer than the app.
 
 ## Derived data (do not persist)
 
@@ -121,3 +122,13 @@ Do **not** store aggregates such as total harvest, total expenses, plant count p
 - Catalog items belong to a garden (not a season) so varieties can span years.
 - Area SET NULL policy keeps historical plantings readable after layout changes.
 - Later perennial support can link multi-year plantings without rewriting v1 FK rules.
+- A future garden-level perennial instance can be added in a forward migration and referenced by
+  season-level plantings, preserving one physical plant identity across years without changing
+  existing planting or history keys.
+
+## Cross-garden integrity
+
+Repositories must reject links whose referenced entities belong to different gardens. Phase 1
+enforces this for `Planting` create/update (season, catalog item, and optional area). Repositories
+added for tasks/events/harvests/expenses/photos must apply the same ownership validation before
+writing their optional links.

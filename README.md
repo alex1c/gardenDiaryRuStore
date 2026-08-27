@@ -20,7 +20,7 @@ Phase 0–1: Expo foundation, SQLite + migrations, domain model, repository laye
 
 ## Requirements
 
-- Node.js **≥ 20.19.4** (recommended; RN 0.86 / Expo 57)
+- Node.js **≥ 22.13.0** (required by Expo SDK 57)
 - Android device or emulator for UI smoke
 
 ## Install & run

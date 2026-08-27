@@ -8,15 +8,19 @@
  * Uses round-to-nearest to absorb binary float noise (e.g. 1.005).
  */
 export function rublesToKopecks(rubles: number): number {
-  if (!Number.isFinite(rubles)) {
+  if (!Number.isFinite(rubles) || rubles < 0) {
     throw new Error(`rublesToKopecks: invalid amount ${rubles}`);
   }
-  return Math.round(rubles * 100);
+  const kopecks = Math.round((rubles + Number.EPSILON) * 100);
+  if (!Number.isSafeInteger(kopecks)) {
+    throw new Error(`rublesToKopecks: amount exceeds safe integer range ${rubles}`);
+  }
+  return kopecks;
 }
 
 /** Converts integer kopecks back to rubles (number; format in UI). */
 export function kopecksToRubles(kopecks: number): number {
-  if (!Number.isInteger(kopecks)) {
+  if (!Number.isSafeInteger(kopecks) || kopecks < 0) {
     throw new Error(`kopecksToRubles expects integer kopecks, got ${kopecks}`);
   }
   return kopecks / 100;

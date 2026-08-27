@@ -5,16 +5,27 @@
 
 import { StorageError } from '@/src/domain/errors';
 import { MIGRATIONS } from './migrations';
-import type { SqlDatabase } from './types';
+import type { Migration, SqlDatabase } from './types';
 
 /**
  * Runs all migrations with version > current user_version, in order.
  * Idempotent: calling again when already up-to-date is a no-op.
  */
-export function runMigrations(db: SqlDatabase): void {
+export function runMigrations(
+  db: SqlDatabase,
+  migrations: readonly Migration[] = MIGRATIONS
+): void {
   const current = db.getUserVersion();
+  validateMigrationChain(migrations);
+  const target = migrations.at(-1)?.version ?? 0;
 
-  for (const migration of MIGRATIONS) {
+  if (current > target) {
+    throw new StorageError(
+      `Database schema version ${current} is newer than supported version ${target}`
+    );
+  }
+
+  for (const migration of migrations) {
     if (migration.version <= current) {
       continue;
     }
@@ -32,4 +43,15 @@ export function runMigrations(db: SqlDatabase): void {
       );
     }
   }
+}
+
+function validateMigrationChain(migrations: readonly Migration[]): void {
+  migrations.forEach((migration, index) => {
+    const expected = index + 1;
+    if (!Number.isInteger(migration.version) || migration.version !== expected) {
+      throw new StorageError(
+        `Invalid migration chain: expected version ${expected}, got ${migration.version}`
+      );
+    }
+  });
 }

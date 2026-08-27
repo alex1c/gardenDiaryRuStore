@@ -146,6 +146,7 @@ export type Expense = {
  */
 export type GardenPhoto = {
   id: string;
+  gardenId: string;
   seasonId: string | null;
   areaId: string | null;
   plantingId: string | null;

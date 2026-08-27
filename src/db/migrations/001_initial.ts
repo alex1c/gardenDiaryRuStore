@@ -52,8 +52,8 @@ export const migration001Initial: Migration = {
         garden_id TEXT NOT NULL,
         name TEXT NOT NULL,
         type TEXT NOT NULL,
-        length REAL,
-        width REAL,
+        length REAL CHECK (length IS NULL OR length > 0),
+        width REAL CHECK (width IS NULL OR width > 0),
         notes TEXT,
         sort_order INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL,
@@ -83,7 +83,7 @@ export const migration001Initial: Migration = {
         season_id TEXT NOT NULL,
         area_id TEXT,
         catalog_item_id TEXT NOT NULL,
-        quantity REAL,
+        quantity REAL CHECK (quantity IS NULL OR quantity > 0),
         quantity_unit TEXT,
         sowing_date TEXT,
         transplant_date TEXT,
@@ -94,7 +94,7 @@ export const migration001Initial: Migration = {
         updated_at TEXT NOT NULL,
         FOREIGN KEY (season_id) REFERENCES seasons(id) ON DELETE CASCADE,
         FOREIGN KEY (area_id) REFERENCES garden_areas(id) ON DELETE SET NULL,
-        FOREIGN KEY (catalog_item_id) REFERENCES plant_catalog_items(id) ON DELETE RESTRICT
+        FOREIGN KEY (catalog_item_id) REFERENCES plant_catalog_items(id) ON DELETE NO ACTION
       );
     `);
 
@@ -148,7 +148,7 @@ export const migration001Initial: Migration = {
         season_id TEXT NOT NULL,
         planting_id TEXT NOT NULL,
         date TEXT NOT NULL,
-        quantity REAL NOT NULL,
+        quantity REAL NOT NULL CHECK (quantity > 0),
         unit TEXT NOT NULL,
         notes TEXT,
         created_at TEXT NOT NULL,
@@ -167,7 +167,9 @@ export const migration001Initial: Migration = {
         planting_id TEXT,
         date TEXT NOT NULL,
         category TEXT NOT NULL,
-        amount_kopecks INTEGER NOT NULL,
+        amount_kopecks INTEGER NOT NULL CHECK (
+          typeof(amount_kopecks) = 'integer' AND amount_kopecks >= 0
+        ),
         notes TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
@@ -181,6 +183,7 @@ export const migration001Initial: Migration = {
     db.exec(`
       CREATE TABLE IF NOT EXISTS garden_photos (
         id TEXT PRIMARY KEY NOT NULL,
+        garden_id TEXT NOT NULL,
         season_id TEXT,
         area_id TEXT,
         planting_id TEXT,
@@ -189,6 +192,7 @@ export const migration001Initial: Migration = {
         taken_at TEXT,
         caption TEXT,
         created_at TEXT NOT NULL,
+        FOREIGN KEY (garden_id) REFERENCES gardens(id) ON DELETE CASCADE,
         FOREIGN KEY (season_id) REFERENCES seasons(id) ON DELETE CASCADE,
         FOREIGN KEY (area_id) REFERENCES garden_areas(id) ON DELETE SET NULL,
         FOREIGN KEY (planting_id) REFERENCES plantings(id) ON DELETE SET NULL,
@@ -235,6 +239,9 @@ export const migration001Initial: Migration = {
     `);
     db.exec(`
       CREATE INDEX IF NOT EXISTS idx_expenses_season_date ON expenses(season_id, date);
+    `);
+    db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_garden_photos_garden_id ON garden_photos(garden_id);
     `);
     db.exec(`
       CREATE INDEX IF NOT EXISTS idx_garden_photos_season_id ON garden_photos(season_id);
