@@ -51,7 +51,8 @@
           "photosPermission": "Приложению нужен доступ к фото для дневника сада.",
           "cameraPermission": "Приложению нужен доступ к камере для снимков на даче."
         }
-      ]
+      ],
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true
