@@ -21,12 +21,13 @@ import { Screen } from '@/src/components/ui/Screen';
 import { useGardenSnapshot } from '@/src/hooks/useGardenSnapshot';
 import { useDatabase } from '@/src/providers/DatabaseProvider';
 import { resolveCatalogItemForPlanting } from '@/src/services/plantCatalogService';
+import { deletePhotosForPlanting } from '@/src/services/photoCleanupService';
 import { colors, typography } from '@/src/theme/tokens';
 
 export default function EditPlantingScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { plantingRepository, catalogRepository, bumpRefresh, ready } =
+  const { plantingRepository, catalogRepository, bumpRefresh, ready, db } =
     useDatabase();
   const { loading, garden, areas, catalogItems, catalogById } = useGardenSnapshot();
   const [saving, setSaving] = useState(false);
@@ -96,10 +97,11 @@ export default function EditPlantingScreen() {
       {
         text: 'Удалить',
         style: 'destructive',
-        onPress: () => {
-          if (!plantingRepository) {
+        onPress: async () => {
+          if (!plantingRepository || !db) {
             return;
           }
+          await deletePhotosForPlanting(db, planting.id);
           plantingRepository.delete(planting.id);
           bumpRefresh();
           router.back();

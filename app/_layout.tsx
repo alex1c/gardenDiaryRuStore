@@ -83,8 +83,20 @@ function RootNavigator() {
           options={{ title: 'Добавить культуру', presentation: 'modal' }}
         />
         <Stack.Screen
+          name="planting/[id]"
+          options={{ title: 'Посадка' }}
+        />
+        <Stack.Screen
           name="planting/edit"
-          options={{ title: 'Посадка', presentation: 'modal' }}
+          options={{ title: 'Редактировать', presentation: 'modal' }}
+        />
+        <Stack.Screen
+          name="event/create"
+          options={{ title: 'Новая запись', presentation: 'modal' }}
+        />
+        <Stack.Screen
+          name="event/edit"
+          options={{ title: 'Запись', presentation: 'modal' }}
         />
         <Stack.Screen
           name="task/create"

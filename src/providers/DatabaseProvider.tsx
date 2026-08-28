@@ -17,6 +17,7 @@ import type { SqlDatabase } from '@/src/db/types';
 import { formatErrorForDiagnostics } from '@/src/domain/errors';
 import { GardenAreaRepository } from '@/src/repositories/GardenAreaRepository';
 import { GardenEventRepository } from '@/src/repositories/GardenEventRepository';
+import { GardenPhotoRepository } from '@/src/repositories/GardenPhotoRepository';
 import { GardenRepository } from '@/src/repositories/GardenRepository';
 import { GardenTaskRepository } from '@/src/repositories/GardenTaskRepository';
 import { PlantCatalogRepository } from '@/src/repositories/PlantCatalogRepository';
@@ -38,6 +39,7 @@ export type DatabaseContextValue = {
   plantingRepository: PlantingRepository | null;
   taskRepository: GardenTaskRepository | null;
   eventRepository: GardenEventRepository | null;
+  photoRepository: GardenPhotoRepository | null;
   settingsRepository: SettingsRepository | null;
 };
 
@@ -101,6 +103,7 @@ export function DatabaseProvider({ children }: Props) {
         plantingRepository: null,
         taskRepository: null,
         eventRepository: null,
+        photoRepository: null,
         settingsRepository: null,
       };
     }
@@ -118,6 +121,7 @@ export function DatabaseProvider({ children }: Props) {
       plantingRepository: new PlantingRepository(db),
       taskRepository: new GardenTaskRepository(db),
       eventRepository: new GardenEventRepository(db),
+      photoRepository: new GardenPhotoRepository(db),
       settingsRepository: new SettingsRepository(db),
     };
   }, [db, error, refreshToken, bumpRefresh]);

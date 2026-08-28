@@ -44,7 +44,14 @@
           "color": "#3B6B4F"
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Приложению нужен доступ к фото для дневника сада.",
+          "cameraPermission": "Приложению нужен доступ к камере для снимков на даче."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

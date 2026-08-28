@@ -39,6 +39,7 @@ export const WORK_TYPES = [
   'weeding',
   'pruning',
   'harvesting',
+  'observation',
   'other',
 ] as const;
 
@@ -124,6 +125,7 @@ export const WORK_TYPE_LABELS: Record<WorkType, string> = {
   weeding: 'Прополка',
   pruning: 'Обрезка',
   harvesting: 'Сбор урожая',
+  observation: 'Наблюдение',
   other: 'Другое',
 };
 
@@ -137,6 +139,7 @@ export const WORK_TYPE_EMOJI: Record<WorkType, string> = {
   weeding: '🌿',
   pruning: '✂',
   harvesting: '🧺',
+  observation: '🌿',
   other: '',
 };
 
@@ -146,6 +149,31 @@ export const REPEAT_TYPE_LABELS: Record<RepeatType, string> = {
   daily: 'Каждый день',
   every_n_days: 'Каждые N дней',
   weekly: 'Каждую неделю',
+};
+
+/** Diary manual-entry type options (UI picker). */
+export const DIARY_FORM_TYPE_OPTIONS: readonly {
+  type: WorkType;
+  label: string;
+}[] = [
+  { type: 'observation', label: 'Наблюдение' },
+  { type: 'other', label: 'Работа' },
+  { type: 'sowing', label: 'Посев' },
+  { type: 'transplanting', label: 'Высадка' },
+  { type: 'feeding', label: 'Подкормка' },
+  { type: 'treatment', label: 'Обработка' },
+  { type: 'watering', label: 'Полив' },
+  { type: 'pruning', label: 'Обрезка' },
+  { type: 'other', label: 'Другое' },
+];
+
+/** Diary timeline filter categories. */
+export type DiaryFilterCategory = 'all' | 'works' | 'observations';
+
+export const DIARY_FILTER_LABELS: Record<DiaryFilterCategory, string> = {
+  all: 'Все',
+  works: 'Работы',
+  observations: 'Наблюдения',
 };
 
 /** Human-readable Russian labels for area types (UI). */

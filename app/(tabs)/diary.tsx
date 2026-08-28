@@ -1,26 +1,61 @@
 /**
- * Дневник — minimal chronological list of GardenEvents from completed tasks.
+ * Дневник — timeline of manual and task-generated events with filters.
  */
 
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
-import { Card } from '@/src/components/ui/Card';
+import { DiaryEventCard } from '@/src/components/diary/DiaryEventCard';
+import { PhotoViewerModal } from '@/src/components/photo/PhotoViewerModal';
+import { Button } from '@/src/components/ui/Button';
 import { EmptyState } from '@/src/components/ui/EmptyState';
 import { Screen } from '@/src/components/ui/Screen';
-import { WORK_TYPE_LABELS } from '@/src/domain/codes';
-import type { GardenEvent } from '@/src/domain/types';
+import {
+  DIARY_FILTER_LABELS,
+  type DiaryFilterCategory,
+} from '@/src/domain/codes';
+import type { GardenPhoto } from '@/src/domain/types';
+import { useDiaryTimeline } from '@/src/hooks/useDiaryTimeline';
 import { useGardenSnapshot } from '@/src/hooks/useGardenSnapshot';
-import { useDatabase } from '@/src/providers/DatabaseProvider';
-import { formatTaskRelationSubtitle } from '@/src/services/taskDisplay';
-import { colors, spacing, typography } from '@/src/theme/tokens';
-import { formatLocalDateShort } from '@/src/utils/dateFormatRu';
+import { formatTaskRelationLabel } from '@/src/services/taskDisplay';
+import { colors, radii, spacing, typography } from '@/src/theme/tokens';
+import {
+  formatLocalDateLong,
+  formatLocalDateShort,
+} from '@/src/utils/dateFormatRu';
 import { toLocalDateString } from '@/src/utils/localDate';
-import { useMemo } from 'react';
 
 export default function DiaryScreen() {
+  const router = useRouter();
+  const params = useLocalSearchParams<{ areaId?: string; plantingId?: string }>();
   const { loading: gardenLoading, season, areas, plantings, catalogById } =
     useGardenSnapshot();
-  const { ready, eventRepository } = useDatabase();
+
+  const [category, setCategory] = useState<DiaryFilterCategory>('all');
+  const [filterAreaId, setFilterAreaId] = useState<string | null>(
+    params.areaId ?? null
+  );
+  const [filterPlantingId, setFilterPlantingId] = useState<string | null>(
+    params.plantingId ?? null
+  );
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [viewerPhoto, setViewerPhoto] = useState<GardenPhoto | null>(null);
+
+  const { loading, groups, photosByEventId } = useDiaryTimeline(season?.id ?? null, {
+    category,
+    areaId: filterAreaId,
+    plantingId: filterPlantingId,
+  });
+
+  const today = toLocalDateString(new Date());
 
   const areasById = useMemo(
     () => new Map(areas.map((area) => [area.id, area])),
@@ -31,18 +66,29 @@ export default function DiaryScreen() {
     [plantings]
   );
 
-  const events = useMemo(() => {
-    if (!ready || !eventRepository || !season) {
-      return [] as GardenEvent[];
+  const filterLabel = useMemo(() => {
+    if (filterPlantingId) {
+      return formatTaskRelationLabel(
+        filterAreaId,
+        filterPlantingId,
+        areasById,
+        plantingsById,
+        catalogById
+      );
     }
-    return eventRepository.listBySeason(season.id);
-  }, [ready, eventRepository, season]);
+    if (filterAreaId) {
+      return areasById.get(filterAreaId)?.name ?? 'Зона';
+    }
+    return 'Все зоны';
+  }, [
+    filterAreaId,
+    filterPlantingId,
+    areasById,
+    plantingsById,
+    catalogById,
+  ]);
 
-  const today = toLocalDateString(new Date());
-  const todayEvents = events.filter((e) => e.eventDate === today);
-  const olderEvents = events.filter((e) => e.eventDate !== today);
-
-  if (gardenLoading || !ready) {
+  if (gardenLoading || loading) {
     return (
       <Screen>
         <View style={styles.center}>
@@ -55,95 +101,157 @@ export default function DiaryScreen() {
   if (!season) {
     return (
       <Screen scroll>
-        <EmptyState
-          title="Дневник"
-          message="Активный сезон не найден."
-        />
+        <EmptyState title="Дневник" message="Активный сезон не найден." />
       </Screen>
     );
   }
 
-  if (events.length === 0) {
-    return (
-      <Screen scroll>
-        <EmptyState
-          title="Дневник пуст"
-          message="Здесь появится история выполненных дел."
-        />
-      </Screen>
-    );
-  }
+  const hasEvents = groups.length > 0;
 
   return (
-    <Screen scroll>
+    <Screen scroll keyboardShouldPersistTaps="handled">
       <Text style={styles.heading}>Дневник</Text>
 
-      {todayEvents.length > 0 ? (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Сегодня</Text>
-          {todayEvents.map((event) => (
-            <EventCard
-              key={event.id}
-              event={event}
-              areasById={areasById}
-              plantingsById={plantingsById}
-              catalogById={catalogById}
-            />
-          ))}
-        </View>
-      ) : null}
+      <View style={styles.toolbar}>
+        <Button
+          title="+ Запись"
+          onPress={() =>
+            router.push({
+              pathname: '/event/create',
+              params: {
+                areaId: filterAreaId ?? undefined,
+                plantingId: filterPlantingId ?? undefined,
+              },
+            })
+          }
+        />
+        <Button
+          title={`Фильтр: ${filterLabel}`}
+          variant="secondary"
+          onPress={() => setFilterOpen(true)}
+        />
+      </View>
 
-      {olderEvents.length > 0 ? (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Ранее</Text>
-          {olderEvents.map((event) => (
-            <EventCard
-              key={event.id}
-              event={event}
-              areasById={areasById}
-              plantingsById={plantingsById}
-              catalogById={catalogById}
-              showDate
-            />
-          ))}
+      <View style={styles.chips}>
+        {(Object.keys(DIARY_FILTER_LABELS) as DiaryFilterCategory[]).map((key) => (
+          <Pressable
+            key={key}
+            accessibilityRole="button"
+            onPress={() => setCategory(key)}
+            style={[styles.chip, category === key ? styles.chipSelected : null]}
+          >
+            <Text
+              style={[
+                styles.chipLabel,
+                category === key ? styles.chipLabelSelected : null,
+              ]}
+            >
+              {DIARY_FILTER_LABELS[key]}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
+      {!hasEvents ? (
+        <EmptyState
+          title="Дневник пока пуст"
+          message="Добавляйте наблюдения и фотографии — со временем здесь появится история вашего участка."
+        >
+          <Button
+            title="+ Первая запись"
+            onPress={() => router.push('/event/create')}
+          />
+        </EmptyState>
+      ) : (
+        groups.map((group) => (
+          <View key={group.date} style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              {formatGroupHeading(group.date, today)}
+            </Text>
+            <View style={styles.list}>
+              {group.events.map((event) => (
+                <DiaryEventCard
+                  key={event.id}
+                  event={event}
+                  photos={photosByEventId.get(event.id) ?? []}
+                  areasById={areasById}
+                  plantingsById={plantingsById}
+                  catalogById={catalogById}
+                  onPress={(eventId) =>
+                    router.push({ pathname: '/event/edit', params: { id: eventId } })
+                  }
+                  onPhotoPress={setViewerPhoto}
+                />
+              ))}
+            </View>
+          </View>
+        ))
+      )}
+
+      <Modal visible={filterOpen} transparent animationType="slide">
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Фильтр</Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                setFilterAreaId(null);
+                setFilterPlantingId(null);
+              }}
+            >
+              <Text style={styles.modalOption}>Все зоны</Text>
+            </Pressable>
+            {areas.map((area) => (
+              <Pressable
+                key={area.id}
+                accessibilityRole="button"
+                onPress={() => {
+                  setFilterAreaId(area.id);
+                  setFilterPlantingId(null);
+                }}
+              >
+                <Text style={styles.modalOption}>{area.name}</Text>
+              </Pressable>
+            ))}
+            {plantings.map((planting) => {
+              const catalog = catalogById.get(planting.catalogItemId);
+              const label = catalog
+                ? catalog.varietyName ?? catalog.speciesName
+                : 'Посадка';
+              return (
+                <Pressable
+                  key={planting.id}
+                  accessibilityRole="button"
+                  onPress={() => {
+                    setFilterPlantingId(planting.id);
+                    if (planting.areaId) {
+                      setFilterAreaId(planting.areaId);
+                    }
+                  }}
+                >
+                  <Text style={styles.modalOption}>{label}</Text>
+                </Pressable>
+              );
+            })}
+            <Button title="Готово" onPress={() => setFilterOpen(false)} />
+          </View>
         </View>
-      ) : null}
+      </Modal>
+
+      <PhotoViewerModal
+        photo={viewerPhoto}
+        visible={viewerPhoto !== null}
+        onClose={() => setViewerPhoto(null)}
+      />
     </Screen>
   );
 }
 
-function EventCard({
-  event,
-  areasById,
-  plantingsById,
-  catalogById,
-  showDate = false,
-}: {
-  event: GardenEvent;
-  areasById: Map<string, import('@/src/domain/types').GardenArea>;
-  plantingsById: Map<string, import('@/src/domain/types').Planting>;
-  catalogById: Map<string, import('@/src/domain/types').PlantCatalogItem>;
-  showDate?: boolean;
-}) {
-  const subtitle = formatTaskRelationSubtitle(
-    event,
-    areasById,
-    plantingsById,
-    catalogById
-  );
-
-  return (
-    <Card style={styles.card}>
-      {showDate ? (
-        <Text style={styles.date}>{formatLocalDateShort(event.eventDate)}</Text>
-      ) : null}
-      <Text style={styles.eventTitle}>
-        ✓ {WORK_TYPE_LABELS[event.type]}
-      </Text>
-      <Text style={styles.eventWork}>{event.title}</Text>
-      {subtitle ? <Text style={styles.eventSub}>{subtitle}</Text> : null}
-    </Card>
-  );
+function formatGroupHeading(date: string, today: string): string {
+  if (date === today) {
+    return `Сегодня · ${formatLocalDateShort(date)}`;
+  }
+  return formatLocalDateLong(date);
 }
 
 const styles = StyleSheet.create({
@@ -157,31 +265,70 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginBottom: spacing.md,
   },
-  section: {
+  toolbar: {
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  chips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: spacing.sm,
     marginBottom: spacing.lg,
+  },
+  chip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  chipSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primarySoft,
+  },
+  chipLabel: {
+    ...typography.body,
+    color: colors.text,
+  },
+  chipLabelSelected: {
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  section: {
+    marginBottom: spacing.lg,
+    gap: spacing.sm,
   },
   sectionTitle: {
     ...typography.subtitle,
     color: colors.text,
   },
-  card: {
-    gap: spacing.xs,
+  list: {
+    gap: spacing.sm,
   },
-  date: {
-    ...typography.caption,
-    color: colors.textMuted,
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'flex-end',
   },
-  eventTitle: {
+  modalCard: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radii.lg,
+    borderTopRightRadius: radii.lg,
+    padding: spacing.lg,
+    gap: spacing.sm,
+    maxHeight: '70%',
+  },
+  modalTitle: {
     ...typography.subtitle,
-    color: colors.success,
+    color: colors.text,
+    marginBottom: spacing.sm,
   },
-  eventWork: {
+  modalOption: {
     ...typography.body,
     color: colors.text,
-  },
-  eventSub: {
-    ...typography.caption,
-    color: colors.textSecondary,
+    paddingVertical: spacing.sm,
+    minHeight: 44,
   },
 });

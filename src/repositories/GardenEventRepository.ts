@@ -3,11 +3,15 @@
  */
 
 import type { SqlDatabase } from '@/src/db/types';
-import { WORK_TYPES, type WorkType } from '@/src/domain/codes';
+import {
+  WORK_TYPES,
+  type DiaryFilterCategory,
+  type WorkType,
+} from '@/src/domain/codes';
 import { StorageError } from '@/src/domain/errors';
 import type { GardenEvent, LocalDate } from '@/src/domain/types';
 import { createId } from '@/src/utils/id';
-import { isValidLocalDateString } from '@/src/utils/localDate';
+import { compareLocalDates, isValidLocalDateString } from '@/src/utils/localDate';
 import { nowIsoUtc } from '@/src/utils/timestamps';
 
 type EventRow = {
@@ -34,6 +38,27 @@ export type CreateGardenEventInput = {
   taskId?: string | null;
   notes?: string | null;
 };
+
+export type UpdateGardenEventInput = {
+  type?: WorkType;
+  title?: string;
+  eventDate?: LocalDate;
+  areaId?: string | null;
+  plantingId?: string | null;
+  notes?: string | null;
+};
+
+export type EventListOptions = {
+  areaId?: string | null;
+  plantingId?: string | null;
+  category?: DiaryFilterCategory;
+  fromDate?: LocalDate;
+  toDate?: LocalDate;
+  limit?: number;
+  offset?: number;
+};
+
+const DEFAULT_LIST_LIMIT = 200;
 
 export class GardenEventRepository {
   constructor(private readonly db: SqlDatabase) {}
@@ -104,6 +129,61 @@ export class GardenEventRepository {
     }
   }
 
+  /**
+   * Updates a manual diary event. Task-generated events are read-only.
+   */
+  updateManual(id: string, input: UpdateGardenEventInput): GardenEvent {
+    const existing = this.getById(id);
+    if (!existing) {
+      throw new StorageError('Event not found');
+    }
+    if (existing.taskId !== null) {
+      throw new StorageError('Task-generated events cannot be edited');
+    }
+
+    const next: GardenEvent = {
+      ...existing,
+      type: input.type ?? existing.type,
+      title: input.title !== undefined ? input.title.trim() : existing.title,
+      eventDate: input.eventDate ?? existing.eventDate,
+      areaId: input.areaId !== undefined ? input.areaId : existing.areaId,
+      plantingId:
+        input.plantingId !== undefined ? input.plantingId : existing.plantingId,
+      notes: input.notes !== undefined ? emptyToNull(input.notes) : existing.notes,
+      updatedAt: nowIsoUtc(),
+    };
+
+    if (next.title.length === 0) {
+      throw new StorageError('Event title is required');
+    }
+
+    assertWorkType(next.type);
+    assertLocalDate(next.eventDate);
+    this.assertSeasonConsistency(next.seasonId, next.areaId, next.plantingId);
+
+    try {
+      this.db.run(
+        `UPDATE garden_events SET
+           type = ?, title = ?, event_date = ?, area_id = ?, planting_id = ?,
+           notes = ?, updated_at = ?
+         WHERE id = ? AND task_id IS NULL`,
+        [
+          next.type,
+          next.title,
+          next.eventDate,
+          next.areaId,
+          next.plantingId,
+          next.notes,
+          next.updatedAt,
+          id,
+        ]
+      );
+      return next;
+    } catch (err) {
+      throw new StorageError('Failed to update garden event', err);
+    }
+  }
+
   delete(id: string): boolean {
     try {
       const result = this.db.run(`DELETE FROM garden_events WHERE id = ?`, [id]);
@@ -113,33 +193,112 @@ export class GardenEventRepository {
     }
   }
 
-  /** Lists events for a season, newest calendar day first. */
-  listBySeason(seasonId: string): GardenEvent[] {
-    try {
-      const rows = this.db.getAll<EventRow>(
-        `SELECT * FROM garden_events
-         WHERE season_id = ?
-         ORDER BY event_date DESC, created_at DESC, id DESC`,
-        [seasonId]
-      );
-      return rows.map(mapEvent);
-    } catch (err) {
-      throw new StorageError('Failed to list garden events', err);
+  /** Deletes only manual events; rejects task-generated rows. */
+  deleteManual(id: string): boolean {
+    const existing = this.getById(id);
+    if (!existing) {
+      return false;
     }
+    if (existing.taskId !== null) {
+      throw new StorageError('Task-generated events cannot be deleted directly');
+    }
+    return this.delete(id);
+  }
+
+  listBySeason(seasonId: string, options: EventListOptions = {}): GardenEvent[] {
+    return this.queryEvents(seasonId, options);
   }
 
   listForDate(seasonId: string, date: LocalDate): GardenEvent[] {
     assertLocalDate(date);
+    return this.queryEvents(seasonId, { fromDate: date, toDate: date });
+  }
+
+  listByArea(areaId: string, limit = 5): GardenEvent[] {
     try {
       const rows = this.db.getAll<EventRow>(
         `SELECT * FROM garden_events
-         WHERE season_id = ? AND event_date = ?
-         ORDER BY created_at DESC, id DESC`,
-        [seasonId, date]
+         WHERE area_id = ?
+         ORDER BY event_date DESC, created_at DESC, id DESC
+         LIMIT ?`,
+        [areaId, limit]
       );
       return rows.map(mapEvent);
     } catch (err) {
-      throw new StorageError('Failed to list garden events for date', err);
+      throw new StorageError('Failed to list events by area', err);
+    }
+  }
+
+  listByPlanting(plantingId: string, limit?: number): GardenEvent[] {
+    const capped = limit ?? DEFAULT_LIST_LIMIT;
+    try {
+      const rows = this.db.getAll<EventRow>(
+        `SELECT * FROM garden_events
+         WHERE planting_id = ?
+         ORDER BY event_date DESC, created_at DESC, id DESC
+         LIMIT ?`,
+        [plantingId, capped]
+      );
+      return rows.map(mapEvent);
+    } catch (err) {
+      throw new StorageError('Failed to list events by planting', err);
+    }
+  }
+
+  listByDateRange(
+    seasonId: string,
+    fromDate: LocalDate,
+    toDate: LocalDate,
+    options: Omit<EventListOptions, 'fromDate' | 'toDate'> = {}
+  ): GardenEvent[] {
+    assertLocalDate(fromDate);
+    assertLocalDate(toDate);
+    if (compareLocalDates(fromDate, toDate) > 0) {
+      throw new StorageError('fromDate must be on or before toDate');
+    }
+    return this.queryEvents(seasonId, { ...options, fromDate, toDate });
+  }
+
+  private queryEvents(seasonId: string, options: EventListOptions): GardenEvent[] {
+    const params: unknown[] = [seasonId];
+    let sql = `SELECT * FROM garden_events WHERE season_id = ?`;
+
+    if (options.areaId) {
+      sql += ` AND area_id = ?`;
+      params.push(options.areaId);
+    }
+    if (options.plantingId) {
+      sql += ` AND planting_id = ?`;
+      params.push(options.plantingId);
+    }
+    if (options.fromDate) {
+      assertLocalDate(options.fromDate);
+      sql += ` AND event_date >= ?`;
+      params.push(options.fromDate);
+    }
+    if (options.toDate) {
+      assertLocalDate(options.toDate);
+      sql += ` AND event_date <= ?`;
+      params.push(options.toDate);
+    }
+    if (options.category === 'observations') {
+      sql += ` AND type = 'observation'`;
+    } else if (options.category === 'works') {
+      sql += ` AND type != 'observation'`;
+    }
+
+    sql += ` ORDER BY event_date DESC, created_at DESC, id DESC`;
+
+    const limit = options.limit ?? DEFAULT_LIST_LIMIT;
+    const offset = options.offset ?? 0;
+    sql += ` LIMIT ? OFFSET ?`;
+    params.push(limit, offset);
+
+    try {
+      const rows = this.db.getAll<EventRow>(sql, params);
+      return rows.map(mapEvent);
+    } catch (err) {
+      throw new StorageError('Failed to list garden events', err);
     }
   }
 
