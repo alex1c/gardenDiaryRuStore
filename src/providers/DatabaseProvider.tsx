@@ -21,6 +21,7 @@ import { GardenPhotoRepository } from '@/src/repositories/GardenPhotoRepository'
 import { GardenRepository } from '@/src/repositories/GardenRepository';
 import { GardenTaskRepository } from '@/src/repositories/GardenTaskRepository';
 import { HarvestRepository } from '@/src/repositories/HarvestRepository';
+import { ExpenseRepository } from '@/src/repositories/ExpenseRepository';
 import { PlantCatalogRepository } from '@/src/repositories/PlantCatalogRepository';
 import { PlantingRepository } from '@/src/repositories/PlantingRepository';
 import { SeasonRepository } from '@/src/repositories/SeasonRepository';
@@ -42,6 +43,7 @@ export type DatabaseContextValue = {
   eventRepository: GardenEventRepository | null;
   photoRepository: GardenPhotoRepository | null;
   harvestRepository: HarvestRepository | null;
+  expenseRepository: ExpenseRepository | null;
   settingsRepository: SettingsRepository | null;
 };
 
@@ -107,6 +109,7 @@ export function DatabaseProvider({ children }: Props) {
         eventRepository: null,
         photoRepository: null,
         harvestRepository: null,
+        expenseRepository: null,
         settingsRepository: null,
       };
     }
@@ -126,6 +129,7 @@ export function DatabaseProvider({ children }: Props) {
       eventRepository: new GardenEventRepository(db),
       photoRepository: new GardenPhotoRepository(db),
       harvestRepository: new HarvestRepository(db),
+      expenseRepository: new ExpenseRepository(db),
       settingsRepository: new SettingsRepository(db),
     };
   }, [db, error, refreshToken, bumpRefresh]);

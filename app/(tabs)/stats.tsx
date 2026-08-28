@@ -1,5 +1,5 @@
 /**
- * Statistics tab — season harvest totals, crops, varieties, plantings.
+ * Statistics tab — season harvest and expense summaries.
  */
 
 import { useRouter } from 'expo-router';
@@ -11,6 +11,7 @@ import { EmptyState } from '@/src/components/ui/EmptyState';
 import { Screen } from '@/src/components/ui/Screen';
 import { useGardenSnapshot } from '@/src/hooks/useGardenSnapshot';
 import { useDatabase } from '@/src/providers/DatabaseProvider';
+import { ExpenseStatsService } from '@/src/services/expenseStatsService';
 import { HarvestStatsService } from '@/src/services/harvestStatsService';
 import { colors, spacing, typography } from '@/src/theme/tokens';
 
@@ -23,12 +24,22 @@ export default function StatsScreen() {
     if (!db || !season) {
       return null;
     }
-    const service = new HarvestStatsService(db);
+    const harvestService = new HarvestStatsService(db);
+    const expenseService = new ExpenseStatsService(db);
     return {
-      summary: service.getSeasonHarvestSummary(season.id),
-      crops: service.getCropTotals(season.id),
-      varieties: service.getVarietyTotals(season.id),
-      plantings: service.getPlantingTotals(season.id),
+      harvest: {
+        summary: harvestService.getSeasonHarvestSummary(season.id),
+        crops: harvestService.getCropTotals(season.id),
+        varieties: harvestService.getVarietyTotals(season.id),
+        plantings: harvestService.getPlantingTotals(season.id),
+      },
+      expenses: {
+        summary: expenseService.getSeasonExpenseSummary(season.id),
+        categories: expenseService.getExpenseTotalsByCategory(season.id),
+        areas: expenseService.getExpenseTotalsByArea(season.id),
+        plantings: expenseService.getPlantingExpenseSummaries(season.id),
+        costPerKg: expenseService.getSeasonCostPerKg(season.id),
+      },
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- refreshToken busts cache
   }, [db, season, refreshToken]);
@@ -43,35 +54,49 @@ export default function StatsScreen() {
     );
   }
 
-  if (!garden || !season) {
+  if (!garden || !season || !stats) {
     return (
       <Screen scroll>
         <EmptyState
           title="Статистика"
-          message="Создайте участок и сезон, чтобы видеть сводки по урожаю."
+          message="Создайте участок и сезон, чтобы видеть сводки."
         />
       </Screen>
     );
   }
 
-  if (!stats || stats.summary.harvestCount === 0) {
+  const hasHarvest = stats.harvest.summary.harvestCount > 0;
+  const hasExpenses = stats.expenses.summary.expenseCount > 0;
+  const maxCropGrams = stats.harvest.crops[0]?.weightGrams ?? 1;
+  const maxCategoryKopecks =
+    stats.expenses.categories[0]?.totalKopecks ?? 1;
+
+  if (!hasHarvest && !hasExpenses) {
     return (
       <Screen scroll>
         <Text style={styles.heading}>Статистика</Text>
+        <Text style={styles.seasonLine}>
+          {garden.name} · {season.title}
+        </Text>
         <EmptyState
-          title="Урожай пока не записан"
-          message="Добавляйте сборы урожая, и здесь появится статистика по культурам и сортам."
+          title="Пока нет данных"
+          message="Добавляйте урожай и расходы — здесь появятся сводки по сезону."
         >
-          <Button
-            title="+ Добавить урожай"
-            onPress={() => router.push('/harvest/create')}
-          />
+          <View style={styles.emptyActions}>
+            <Button
+              title="+ Добавить урожай"
+              onPress={() => router.push('/harvest/create')}
+            />
+            <Button
+              title="+ Добавить расход"
+              variant="secondary"
+              onPress={() => router.push('/expense/create')}
+            />
+          </View>
         </EmptyState>
       </Screen>
     );
   }
-
-  const maxCropGrams = stats.crops[0]?.weightGrams ?? 1;
 
   return (
     <Screen scroll>
@@ -80,82 +105,180 @@ export default function StatsScreen() {
         {garden.name} · {season.title}
       </Text>
 
-      <View style={styles.block}>
-        <Text style={styles.blockTitle}>Урожай за сезон</Text>
-        <Text style={styles.bigTotal}>
-          {stats.summary.totalsText ?? '0'}
-        </Text>
-      </View>
+      {hasHarvest ? (
+        <>
+          <View style={styles.block}>
+            <Text style={styles.blockTitle}>Урожай за сезон</Text>
+            <Text style={styles.bigTotalHarvest}>
+              {stats.harvest.summary.totalsText ?? '0'}
+            </Text>
+          </View>
 
-      {stats.crops.length > 0 ? (
-        <View style={styles.block}>
-          <Text style={styles.blockTitle}>По культурам</Text>
-          {stats.crops.map((crop, index) => (
-            <View key={crop.speciesName} style={styles.rankRow}>
-              <Text style={styles.rankIndex}>{index + 1}.</Text>
-              <View style={styles.rankContent}>
-                <View style={styles.rankHeader}>
-                  <Text style={styles.rankLabel} numberOfLines={2}>
-                    {crop.speciesName}
-                  </Text>
-                  <Text style={styles.rankValue}>{crop.displayTotal}</Text>
-                </View>
-                {crop.weightGrams > 0 ? (
-                  <View style={styles.barTrack}>
-                    <View
-                      style={[
-                        styles.barFill,
-                        { width: `${(crop.weightGrams / maxCropGrams) * 100}%` },
-                      ]}
-                    />
+          {stats.harvest.crops.length > 0 ? (
+            <View style={styles.block}>
+              <Text style={styles.blockTitle}>По культурам</Text>
+              {stats.harvest.crops.map((crop, index) => (
+                <View key={crop.speciesName} style={styles.rankRow}>
+                  <Text style={styles.rankIndex}>{index + 1}.</Text>
+                  <View style={styles.rankContent}>
+                    <View style={styles.rankHeader}>
+                      <Text style={styles.rankLabel} numberOfLines={2}>
+                        {crop.speciesName}
+                      </Text>
+                      <Text style={styles.rankValue}>{crop.displayTotal}</Text>
+                    </View>
+                    {crop.weightGrams > 0 ? (
+                      <View style={styles.barTrack}>
+                        <View
+                          style={[
+                            styles.barFillHarvest,
+                            {
+                              width: `${(crop.weightGrams / maxCropGrams) * 100}%`,
+                            },
+                          ]}
+                        />
+                      </View>
+                    ) : null}
                   </View>
-                ) : null}
-              </View>
+                </View>
+              ))}
             </View>
-          ))}
-        </View>
+          ) : null}
+
+          {stats.harvest.varieties.length > 0 ? (
+            <View style={styles.block}>
+              <Text style={styles.blockTitle}>Лучшие сорта</Text>
+              {stats.harvest.varieties.slice(0, 8).map((item) => (
+                <View
+                  key={`${item.speciesName}-${item.varietyName ?? ''}`}
+                  style={styles.lineRow}
+                >
+                  <Text style={styles.lineLabel} numberOfLines={2}>
+                    {item.label}
+                  </Text>
+                  <Text style={styles.lineValue}>{item.displayTotal}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+        </>
       ) : null}
 
-      {stats.varieties.length > 0 ? (
-        <View style={styles.block}>
-          <Text style={styles.blockTitle}>Лучшие сорта</Text>
-          {stats.varieties.slice(0, 8).map((item) => (
-            <View key={`${item.speciesName}-${item.varietyName ?? ''}`} style={styles.lineRow}>
-              <Text style={styles.lineLabel} numberOfLines={2}>
-                {item.label}
+      {hasExpenses ? (
+        <>
+          <View style={styles.block}>
+            <Text style={styles.blockTitle}>Расходы за сезон</Text>
+            <Text style={styles.bigTotalExpense}>
+              {stats.expenses.summary.displayTotal}
+            </Text>
+            {stats.expenses.costPerKg ? (
+              <Text style={styles.costPerKg}>
+                {stats.expenses.costPerKg.displayText}
               </Text>
-              <Text style={styles.lineValue}>{item.displayTotal}</Text>
-            </View>
-          ))}
-        </View>
-      ) : null}
+            ) : null}
+          </View>
 
-      {stats.plantings.length > 0 ? (
-        <View style={styles.block}>
-          <Text style={styles.blockTitle}>По посадкам</Text>
-          {stats.plantings.map((item) => (
-            <View key={item.plantingId} style={styles.plantingCard}>
-              <Text style={styles.plantingTitle} numberOfLines={2}>
-                {item.label}
-              </Text>
-              {item.areaName ? (
-                <Text style={styles.plantingMeta}>{item.areaName}</Text>
+          {stats.expenses.categories.length > 0 ? (
+            <View style={styles.block}>
+              <Text style={styles.blockTitle}>На что потрачено</Text>
+              {stats.expenses.categories.map((item) => (
+                <View key={item.category} style={styles.rankRow}>
+                  <View style={styles.rankContent}>
+                    <View style={styles.rankHeader}>
+                      <Text style={styles.rankLabel} numberOfLines={2}>
+                        {item.label}
+                      </Text>
+                      <Text style={styles.rankValue}>{item.displayTotal}</Text>
+                    </View>
+                    <View style={styles.barTrack}>
+                      <View
+                        style={[
+                          styles.barFillExpense,
+                          {
+                            width: `${(item.totalKopecks / maxCategoryKopecks) * 100}%`,
+                          },
+                        ]}
+                      />
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : null}
+
+          {stats.expenses.areas.areas.length > 0 ||
+          stats.expenses.areas.commonDisplayTotal ? (
+            <View style={styles.block}>
+              <Text style={styles.blockTitle}>По зонам</Text>
+              {stats.expenses.areas.areas.map((item) => (
+                <View key={item.areaId} style={styles.lineRow}>
+                  <Text style={styles.lineLabel} numberOfLines={2}>
+                    {item.areaName}
+                  </Text>
+                  <Text style={styles.lineValue}>{item.displayTotal}</Text>
+                </View>
+              ))}
+              {stats.expenses.areas.commonDisplayTotal ? (
+                <View style={styles.lineRow}>
+                  <Text style={styles.lineLabel}>Общие расходы</Text>
+                  <Text style={styles.lineValue}>
+                    {stats.expenses.areas.commonDisplayTotal}
+                  </Text>
+                </View>
               ) : null}
-              <Text style={styles.plantingTotal}>
-                {item.totalsText ?? '—'}
-              </Text>
-              {item.yieldPerPlant ? (
-                <Text style={styles.yieldPerPlant}>{item.yieldPerPlant}</Text>
-              ) : null}
             </View>
-          ))}
-        </View>
-      ) : null}
+          ) : null}
 
-      <Button
-        title="+ Добавить урожай"
-        onPress={() => router.push('/harvest/create')}
-      />
+          {stats.expenses.plantings.length > 0 ? (
+            <View style={styles.block}>
+              <Text style={styles.blockTitle}>Расходы по посадкам</Text>
+              {stats.expenses.plantings.slice(0, 6).map((item) => (
+                <View key={item.plantingId} style={styles.plantingCard}>
+                  <Text style={styles.plantingTitle} numberOfLines={2}>
+                    {item.label}
+                  </Text>
+                  <Text style={styles.plantingTotal}>{item.displayTotal}</Text>
+                  {item.conditionalCostPerKg ? (
+                    <Text style={styles.yieldHint}>{item.conditionalCostPerKg}</Text>
+                  ) : null}
+                </View>
+              ))}
+            </View>
+          ) : null}
+
+          <Button
+            title="Все расходы"
+            variant="secondary"
+            onPress={() => router.push('/expense/list')}
+          />
+        </>
+      ) : (
+        <View style={styles.block}>
+          <EmptyState
+            title="Расходы пока не записаны"
+            message="Добавляйте покупки и затраты, чтобы видеть стоимость сезона."
+          >
+            <Button
+              title="+ Добавить расход"
+              onPress={() => router.push('/expense/create')}
+            />
+          </EmptyState>
+        </View>
+      )}
+
+      <View style={styles.footerActions}>
+        {hasHarvest ? (
+          <Button
+            title="+ Добавить урожай"
+            variant="secondary"
+            onPress={() => router.push('/harvest/create')}
+          />
+        ) : null}
+        <Button
+          title="+ Добавить расход"
+          onPress={() => router.push('/expense/create')}
+        />
+      </View>
     </Screen>
   );
 }
@@ -184,10 +307,20 @@ const styles = StyleSheet.create({
     ...typography.subtitle,
     color: colors.text,
   },
-  bigTotal: {
+  bigTotalHarvest: {
     ...typography.title,
     color: colors.primary,
     fontSize: 32,
+  },
+  bigTotalExpense: {
+    ...typography.title,
+    color: colors.text,
+    fontSize: 32,
+  },
+  costPerKg: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
   },
   rankRow: {
     flexDirection: 'row',
@@ -226,9 +359,15 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     overflow: 'hidden',
   },
-  barFill: {
+  barFillHarvest: {
     height: '100%',
     backgroundColor: colors.primary,
+    borderRadius: 3,
+    minWidth: 4,
+  },
+  barFillExpense: {
+    height: '100%',
+    backgroundColor: colors.textSecondary,
     borderRadius: 3,
     minWidth: 4,
   },
@@ -258,17 +397,21 @@ const styles = StyleSheet.create({
     ...typography.subtitle,
     color: colors.text,
   },
-  plantingMeta: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
   plantingTotal: {
     ...typography.body,
-    color: colors.primary,
+    color: colors.text,
     fontWeight: '600',
   },
-  yieldPerPlant: {
+  yieldHint: {
     ...typography.caption,
     color: colors.textMuted,
+  },
+  emptyActions: {
+    gap: spacing.sm,
+  },
+  footerActions: {
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    marginBottom: spacing.lg,
   },
 });

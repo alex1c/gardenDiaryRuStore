@@ -104,6 +104,16 @@ export default function AreaDetailScreen() {
             })
           }
         />
+        <Button
+          title="+ Расход"
+          variant="secondary"
+          onPress={() =>
+            router.push({
+              pathname: '/expense/create',
+              params: { areaId: area.id },
+            })
+          }
+        />
       </View>
 
       {recentEvents.length > 0 ? (

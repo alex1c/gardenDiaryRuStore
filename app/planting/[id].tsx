@@ -29,6 +29,7 @@ import { formatLocalDateShort } from '@/src/utils/dateFormatRu';
 import { deletePhotosForPlanting } from '@/src/services/photoCleanupService';
 import { saveGardenPhoto } from '@/src/services/photoService';
 import { HarvestStatsService } from '@/src/services/harvestStatsService';
+import { ExpenseStatsService } from '@/src/services/expenseStatsService';
 import { formatHarvestQuantity } from '@/src/services/harvestFormat';
 import {
   pickImageFromLibrary,
@@ -85,6 +86,14 @@ export default function PlantingDetailScreen() {
       return null;
     }
     return new HarvestStatsService(db).getPlantingHarvestSummary(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refreshToken busts cache after mutations
+  }, [db, id, refreshToken]);
+
+  const expenseSummary = useMemo(() => {
+    if (!db || !id) {
+      return null;
+    }
+    return new ExpenseStatsService(db).getPlantingExpenseSummary(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- refreshToken busts cache after mutations
   }, [db, id, refreshToken]);
 
@@ -210,6 +219,19 @@ export default function PlantingDetailScreen() {
             })
           }
         />
+        <Button
+          title="+ Расход"
+          variant="secondary"
+          onPress={() =>
+            router.push({
+              pathname: '/expense/create',
+              params: {
+                plantingId: planting.id,
+                areaId: planting.areaId ?? undefined,
+              },
+            })
+          }
+        />
         <Button title="+ Фото" variant="secondary" onPress={handleAddPhoto} />
         <Button
           title="Изменить"
@@ -270,6 +292,43 @@ export default function PlantingDetailScreen() {
               })
             }
           />
+        </View>
+      )}
+
+      <Text style={styles.sectionTitle}>Расходы</Text>
+      {!expenseSummary ? (
+        <EmptyState
+          title="Расходы не привязаны"
+          message="Запишите покупки, относящиеся к этой посадке."
+        >
+          <Button
+            title="+ Добавить расход"
+            onPress={() =>
+              router.push({
+                pathname: '/expense/create',
+                params: {
+                  plantingId: planting.id,
+                  areaId: planting.areaId ?? undefined,
+                },
+              })
+            }
+          />
+        </EmptyState>
+      ) : (
+        <View style={styles.harvestBlock}>
+          <Text style={styles.harvestSeasonTotal}>
+            Расходы: {expenseSummary.displayTotal}
+          </Text>
+          {expenseSummary.harvestTotalsText ? (
+            <Text style={styles.metaLine}>
+              Урожай: {expenseSummary.harvestTotalsText}
+            </Text>
+          ) : null}
+          {expenseSummary.conditionalCostPerKg ? (
+            <Text style={styles.yieldPerPlant}>
+              {expenseSummary.conditionalCostPerKg}
+            </Text>
+          ) : null}
         </View>
       )}
 
@@ -435,5 +494,9 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.text,
     paddingVertical: spacing.xs,
+  },
+  metaLine: {
+    ...typography.body,
+    color: colors.textSecondary,
   },
 });

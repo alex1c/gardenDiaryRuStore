@@ -107,6 +107,18 @@ function RootNavigator() {
           options={{ title: 'Изменить урожай', presentation: 'modal' }}
         />
         <Stack.Screen
+          name="expense/create"
+          options={{ title: 'Расход', presentation: 'modal' }}
+        />
+        <Stack.Screen
+          name="expense/edit"
+          options={{ title: 'Изменить расход', presentation: 'modal' }}
+        />
+        <Stack.Screen
+          name="expense/list"
+          options={{ title: 'Все расходы' }}
+        />
+        <Stack.Screen
           name="task/create"
           options={{ title: 'Новое дело', presentation: 'modal' }}
         />

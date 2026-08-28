@@ -163,6 +163,11 @@ export default function TodayScreen() {
           variant="secondary"
           onPress={() => router.push('/harvest/create')}
         />
+        <Button
+          title="+ Расход"
+          variant="secondary"
+          onPress={() => router.push('/expense/create')}
+        />
       </View>
 
       {todayHarvestLines.length > 0 ? (

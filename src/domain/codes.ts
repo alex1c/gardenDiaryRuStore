@@ -82,6 +82,28 @@ export const EXPENSE_CATEGORIES = [
 
 export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
 
+/** Russian labels for expense categories (UI). */
+export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
+  seeds: 'Семена',
+  seedlings: 'Рассада',
+  soil: 'Грунт',
+  fertilizers: 'Удобрения',
+  plant_protection: 'Защита растений',
+  tools: 'Инструменты',
+  construction: 'Обустройство',
+  water: 'Вода',
+  other: 'Другое',
+};
+
+/** Expense form category picker options. */
+export const EXPENSE_FORM_CATEGORY_OPTIONS: readonly {
+  category: ExpenseCategory;
+  label: string;
+}[] = EXPENSE_CATEGORIES.map((category) => ({
+  category,
+  label: EXPENSE_CATEGORY_LABELS[category],
+}));
+
 /** Optional quantity unit for plantings (distinct from harvest units). */
 export const QUANTITY_UNITS = [
   'pcs',
