@@ -3,7 +3,7 @@
  */
 
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -34,7 +34,7 @@ import { saveGardenPhoto } from '@/src/services/photoService';
 export default function EditEventScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { db, bumpRefresh, eventRepository, photoRepository, refreshToken } = useDatabase();
+  const { db, bumpRefresh, eventRepository, photoRepository, harvestRepository, refreshToken } = useDatabase();
   const { loading, garden, season, areas, plantings, catalogById } = useGardenSnapshot();
   const [saving, setSaving] = useState(false);
   const [viewerPhoto, setViewerPhoto] = useState<GardenPhoto | null>(null);
@@ -54,7 +54,20 @@ export default function EditEventScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- refreshToken busts cache after mutations
   }, [photoRepository, id, refreshToken]);
 
-  const readOnly = event ? !canEditEvent(event) : false;
+  const linkedHarvest = useMemo(() => {
+    if (!harvestRepository || !id) {
+      return null;
+    }
+    return harvestRepository.getByEventId(id);
+  }, [harvestRepository, id]);
+
+  useEffect(() => {
+    if (linkedHarvest) {
+      router.replace({ pathname: '/harvest/edit', params: { id: linkedHarvest.id } });
+    }
+  }, [linkedHarvest, router]);
+
+  const readOnly = event ? !canEditEvent(event, { harvestLinked: Boolean(linkedHarvest) }) : false;
 
   const handleSubmit = async (values: EventFormValues) => {
     if (!eventRepository || !event || !db || !garden || !season) {

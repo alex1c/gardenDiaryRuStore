@@ -119,10 +119,10 @@ describe('schema migration v2', () => {
     expect(new SeasonRepository(adapter).getById(season.id)?.gardenId).toBe(garden.id);
   });
 
-  test('fresh database initializes to schema version 2', async () => {
+  test('fresh database initializes to schema version 3', async () => {
     const db = await openTestDb();
     expect(db.getUserVersion()).toBe(CURRENT_SCHEMA_VERSION);
-    expect(CURRENT_SCHEMA_VERSION).toBe(2);
+    expect(CURRENT_SCHEMA_VERSION).toBe(3);
   });
 });
 

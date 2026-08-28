@@ -60,6 +60,13 @@ export const HARVEST_UNITS = ['kg', 'g', 'pcs'] as const;
 
 export type HarvestUnit = (typeof HARVEST_UNITS)[number];
 
+/** Russian labels for harvest quantity units (UI). */
+export const HARVEST_UNIT_LABELS: Record<HarvestUnit, string> = {
+  kg: 'кг',
+  g: 'г',
+  pcs: 'шт.',
+};
+
 /** Expense categories. */
 export const EXPENSE_CATEGORIES = [
   'seeds',
@@ -124,7 +131,7 @@ export const WORK_TYPE_LABELS: Record<WorkType, string> = {
   transplanting: 'Высадка',
   weeding: 'Прополка',
   pruning: 'Обрезка',
-  harvesting: 'Сбор урожая',
+  harvesting: 'Урожай',
   observation: 'Наблюдение',
   other: 'Другое',
 };
@@ -157,7 +164,6 @@ export const DIARY_FORM_TYPE_OPTIONS: readonly {
   label: string;
 }[] = [
   { type: 'observation', label: 'Наблюдение' },
-  { type: 'other', label: 'Работа' },
   { type: 'sowing', label: 'Посев' },
   { type: 'transplanting', label: 'Высадка' },
   { type: 'feeding', label: 'Подкормка' },

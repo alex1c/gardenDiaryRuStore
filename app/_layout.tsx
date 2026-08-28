@@ -99,6 +99,14 @@ function RootNavigator() {
           options={{ title: 'Запись', presentation: 'modal' }}
         />
         <Stack.Screen
+          name="harvest/create"
+          options={{ title: 'Урожай', presentation: 'modal' }}
+        />
+        <Stack.Screen
+          name="harvest/edit"
+          options={{ title: 'Изменить урожай', presentation: 'modal' }}
+        />
+        <Stack.Screen
           name="task/create"
           options={{ title: 'Новое дело', presentation: 'modal' }}
         />

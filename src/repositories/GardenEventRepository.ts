@@ -130,7 +130,7 @@ export class GardenEventRepository {
   }
 
   /**
-   * Updates a manual diary event. Task-generated events are read-only.
+   * Updates a manual diary event. Task-generated and harvest-linked events are read-only.
    */
   updateManual(id: string, input: UpdateGardenEventInput): GardenEvent {
     const existing = this.getById(id);
@@ -139,6 +139,9 @@ export class GardenEventRepository {
     }
     if (existing.taskId !== null) {
       throw new StorageError('Task-generated events cannot be edited');
+    }
+    if (this.isHarvestLinkedEvent(id)) {
+      throw new StorageError('Harvest-linked events cannot be edited directly');
     }
 
     const next: GardenEvent = {
@@ -193,7 +196,7 @@ export class GardenEventRepository {
     }
   }
 
-  /** Deletes only manual events; rejects task-generated rows. */
+  /** Deletes only manual events; rejects task-generated and harvest-linked rows. */
   deleteManual(id: string): boolean {
     const existing = this.getById(id);
     if (!existing) {
@@ -202,7 +205,50 @@ export class GardenEventRepository {
     if (existing.taskId !== null) {
       throw new StorageError('Task-generated events cannot be deleted directly');
     }
+    if (this.isHarvestLinkedEvent(id)) {
+      throw new StorageError('Harvest-linked events cannot be deleted directly');
+    }
     return this.delete(id);
+  }
+
+  /**
+   * Syncs a harvest-linked diary event after harvest edit.
+   * Bypasses manual/task guards — only called from harvestService.
+   */
+  syncHarvestLinked(
+    id: string,
+    input: Pick<UpdateGardenEventInput, 'title' | 'eventDate' | 'notes'>
+  ): GardenEvent {
+    const existing = this.getById(id);
+    if (!existing) {
+      throw new StorageError('Event not found');
+    }
+
+    const next: GardenEvent = {
+      ...existing,
+      title: input.title !== undefined ? input.title.trim() : existing.title,
+      eventDate: input.eventDate ?? existing.eventDate,
+      notes:
+        input.notes !== undefined ? emptyToNull(input.notes) : existing.notes,
+      updatedAt: nowIsoUtc(),
+    };
+
+    if (next.title.length === 0) {
+      throw new StorageError('Event title is required');
+    }
+    assertLocalDate(next.eventDate);
+
+    try {
+      this.db.run(
+        `UPDATE garden_events SET
+           title = ?, event_date = ?, notes = ?, updated_at = ?
+         WHERE id = ?`,
+        [next.title, next.eventDate, next.notes, next.updatedAt, id]
+      );
+      return next;
+    } catch (err) {
+      throw new StorageError('Failed to sync harvest-linked event', err);
+    }
   }
 
   listBySeason(seasonId: string, options: EventListOptions = {}): GardenEvent[] {
@@ -300,6 +346,14 @@ export class GardenEventRepository {
     } catch (err) {
       throw new StorageError('Failed to list garden events', err);
     }
+  }
+
+  private isHarvestLinkedEvent(eventId: string): boolean {
+    const row = this.db.getFirst<{ id: string }>(
+      `SELECT id FROM harvests WHERE event_id = ?`,
+      [eventId]
+    );
+    return row !== null;
   }
 
   private assertSeasonConsistency(

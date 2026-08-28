@@ -20,6 +20,7 @@ type DiaryEventCardProps = {
   areasById: Map<string, GardenArea>;
   plantingsById: Map<string, Planting>;
   catalogById: Map<string, PlantCatalogItem>;
+  harvestLinked?: boolean;
   onPress: (eventId: string) => void;
   onPhotoPress?: (photo: GardenPhoto) => void;
 };
@@ -30,6 +31,7 @@ export function DiaryEventCard({
   areasById,
   plantingsById,
   catalogById,
+  harvestLinked = false,
   onPress,
   onPhotoPress,
 }: DiaryEventCardProps) {
@@ -39,7 +41,7 @@ export function DiaryEventCard({
     plantingsById,
     catalogById
   );
-  const editable = canEditEvent(event);
+  const editable = canEditEvent(event, { harvestLinked });
 
   return (
     <Pressable accessibilityRole="button" onPress={() => onPress(event.id)}>
@@ -65,7 +67,9 @@ export function DiaryEventCard({
           </View>
         ) : null}
         {!editable ? (
-          <Text style={styles.autoHint}>Выполненная работа</Text>
+          <Text style={styles.autoHint}>
+            {harvestLinked ? 'Запись об урожае' : 'Выполненная работа'}
+          </Text>
         ) : null}
       </Card>
     </Pressable>

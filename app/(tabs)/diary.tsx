@@ -25,6 +25,7 @@ import {
 import type { GardenPhoto } from '@/src/domain/types';
 import { useDiaryTimeline } from '@/src/hooks/useDiaryTimeline';
 import { useGardenSnapshot } from '@/src/hooks/useGardenSnapshot';
+import { useDatabase } from '@/src/providers/DatabaseProvider';
 import { formatTaskRelationLabel } from '@/src/services/taskDisplay';
 import { colors, radii, spacing, typography } from '@/src/theme/tokens';
 import {
@@ -36,6 +37,7 @@ import { toLocalDateString } from '@/src/utils/localDate';
 export default function DiaryScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ areaId?: string; plantingId?: string }>();
+  const { harvestRepository } = useDatabase();
   const { loading: gardenLoading, season, areas, plantings, catalogById } =
     useGardenSnapshot();
 
@@ -65,6 +67,15 @@ export default function DiaryScreen() {
     () => new Map(plantings.map((p) => [p.id, p])),
     [plantings]
   );
+
+  const handleEventPress = (eventId: string) => {
+    const linkedHarvest = harvestRepository?.getByEventId(eventId);
+    if (linkedHarvest) {
+      router.push({ pathname: '/harvest/edit', params: { id: linkedHarvest.id } });
+      return;
+    }
+    router.push({ pathname: '/event/edit', params: { id: eventId } });
+  };
 
   const filterLabel = useMemo(() => {
     if (filterPlantingId) {
@@ -177,9 +188,8 @@ export default function DiaryScreen() {
                   areasById={areasById}
                   plantingsById={plantingsById}
                   catalogById={catalogById}
-                  onPress={(eventId) =>
-                    router.push({ pathname: '/event/edit', params: { id: eventId } })
-                  }
+                  harvestLinked={Boolean(harvestRepository?.getByEventId(event.id))}
+                  onPress={handleEventPress}
                   onPhotoPress={setViewerPhoto}
                 />
               ))}

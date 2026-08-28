@@ -20,6 +20,7 @@ import { useGardenSnapshot } from '@/src/hooks/useGardenSnapshot';
 import { useTodayTasks } from '@/src/hooks/useTodayTasks';
 import { useDatabase } from '@/src/providers/DatabaseProvider';
 import { formatTaskTitle } from '@/src/services/taskDisplay';
+import { HarvestStatsService } from '@/src/services/harvestStatsService';
 import { completeTask, undoCompleteTask } from '@/src/services/taskCompletionService';
 import { syncDailyReminder } from '@/src/services/notificationScheduler';
 import { colors, spacing, typography } from '@/src/theme/tokens';
@@ -28,7 +29,7 @@ import { addDaysToLocalDate } from '@/src/utils/localDate';
 
 export default function TodayScreen() {
   const router = useRouter();
-  const { db, bumpRefresh, taskRepository, settingsRepository } = useDatabase();
+  const { db, bumpRefresh, taskRepository, settingsRepository, refreshToken } = useDatabase();
   const { loading: gardenLoading, garden, season, areas, plantings, catalogById } =
     useGardenSnapshot();
   const {
@@ -54,6 +55,14 @@ export default function TodayScreen() {
 
   const hasActiveTasks = overdue.length > 0 || todayTasks.length > 0;
   const loading = gardenLoading || tasksLoading;
+
+  const todayHarvestLines = useMemo(() => {
+    if (!db || !season) {
+      return [];
+    }
+    return new HarvestStatsService(db).getTodayHarvestLines(season.id, today);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refreshToken busts cache
+  }, [db, season, today, refreshToken]);
 
   const handleComplete = useCallback(
     async (taskId: string) => {
@@ -149,7 +158,23 @@ export default function TodayScreen() {
           title="+ Добавить дело"
           onPress={() => router.push('/task/create')}
         />
+        <Button
+          title="+ Урожай"
+          variant="secondary"
+          onPress={() => router.push('/harvest/create')}
+        />
       </View>
+
+      {todayHarvestLines.length > 0 ? (
+        <View style={styles.harvestToday}>
+          <Text style={styles.sectionTitle}>Сегодня собрано</Text>
+          {todayHarvestLines.map((line) => (
+            <Text key={line.label} style={styles.harvestLine}>
+              {line.label} — {line.totalsText}
+            </Text>
+          ))}
+        </View>
+      ) : null}
 
       {!hasActiveTasks && completedToday.length === 0 ? (
         <EmptyState
@@ -280,6 +305,15 @@ const styles = StyleSheet.create({
   },
   toolbar: {
     marginBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  harvestToday: {
+    marginBottom: spacing.md,
+    gap: spacing.xs,
+  },
+  harvestLine: {
+    ...typography.body,
+    color: colors.text,
   },
   section: {
     marginTop: spacing.lg,

@@ -28,6 +28,8 @@ import { colors, spacing, typography } from '@/src/theme/tokens';
 import { formatLocalDateShort } from '@/src/utils/dateFormatRu';
 import { deletePhotosForPlanting } from '@/src/services/photoCleanupService';
 import { saveGardenPhoto } from '@/src/services/photoService';
+import { HarvestStatsService } from '@/src/services/harvestStatsService';
+import { formatHarvestQuantity } from '@/src/services/harvestFormat';
 import {
   pickImageFromLibrary,
   takePhotoWithCamera,
@@ -36,7 +38,7 @@ import {
 export default function PlantingDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { db, bumpRefresh, plantingRepository, eventRepository, photoRepository, areaRepository, refreshToken } =
+  const { db, bumpRefresh, plantingRepository, eventRepository, photoRepository, areaRepository, harvestRepository, refreshToken } =
     useDatabase();
   const { loading, garden, season, areas, catalogById } = useGardenSnapshot();
   const [viewerPhoto, setViewerPhoto] = useState<GardenPhoto | null>(null);
@@ -77,6 +79,14 @@ export default function PlantingDetailScreen() {
     return photoRepository.listByPlanting(id, 12);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- refreshToken busts cache after mutations
   }, [photoRepository, id, refreshToken]);
+
+  const harvestSummary = useMemo(() => {
+    if (!db || !id) {
+      return null;
+    }
+    return new HarvestStatsService(db).getPlantingHarvestSummary(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refreshToken busts cache after mutations
+  }, [db, id, refreshToken]);
 
   const areasById = useMemo(
     () => new Map(areas.map((item) => [item.id, item])),
@@ -190,6 +200,16 @@ export default function PlantingDetailScreen() {
             })
           }
         />
+        <Button
+          title="+ Урожай"
+          variant="secondary"
+          onPress={() =>
+            router.push({
+              pathname: '/harvest/create',
+              params: { plantingId: planting.id },
+            })
+          }
+        />
         <Button title="+ Фото" variant="secondary" onPress={handleAddPhoto} />
         <Button
           title="Изменить"
@@ -199,6 +219,59 @@ export default function PlantingDetailScreen() {
           }
         />
       </View>
+
+      <Text style={styles.sectionTitle}>Урожай</Text>
+      {!harvestSummary || harvestSummary.recentHarvests.length === 0 ? (
+        <EmptyState
+          title="Урожай пока не записан"
+          message="Добавьте первый сбор с этой посадки."
+        >
+          <Button
+            title="+ Добавить урожай"
+            onPress={() =>
+              router.push({
+                pathname: '/harvest/create',
+                params: { plantingId: planting.id },
+              })
+            }
+          />
+        </EmptyState>
+      ) : (
+        <View style={styles.harvestBlock}>
+          {harvestSummary.totalsText ? (
+            <Text style={styles.harvestSeasonTotal}>
+              За сезон: {harvestSummary.totalsText}
+            </Text>
+          ) : null}
+          {harvestSummary.yieldPerPlant ? (
+            <Text style={styles.yieldPerPlant}>{harvestSummary.yieldPerPlant}</Text>
+          ) : null}
+          {harvestSummary.recentHarvests.map((harvest) => (
+            <Pressable
+              key={harvest.id}
+              accessibilityRole="button"
+              onPress={() =>
+                router.push({ pathname: '/harvest/edit', params: { id: harvest.id } })
+              }
+            >
+              <Text style={styles.harvestLine}>
+                {formatLocalDateShort(harvest.date)} —{' '}
+                {formatHarvestQuantity(harvest.quantity, harvest.unit)}
+              </Text>
+            </Pressable>
+          ))}
+          <Button
+            title="+ Добавить урожай"
+            variant="secondary"
+            onPress={() =>
+              router.push({
+                pathname: '/harvest/create',
+                params: { plantingId: planting.id },
+              })
+            }
+          />
+        </View>
+      )}
 
       <Text style={styles.sectionTitle}>Фотографии</Text>
       {photos.length === 0 ? (
@@ -251,9 +324,18 @@ export default function PlantingDetailScreen() {
                 areasById={areasById}
                 plantingsById={plantingsById}
                 catalogById={catalogById}
-                onPress={(eventId) =>
-                  router.push({ pathname: '/event/edit', params: { id: eventId } })
-                }
+                harvestLinked={Boolean(harvestRepository?.getByEventId(event.id))}
+                onPress={(eventId) => {
+                  const linked = harvestRepository?.getByEventId(eventId);
+                  if (linked) {
+                    router.push({
+                      pathname: '/harvest/edit',
+                      params: { id: linked.id },
+                    });
+                    return;
+                  }
+                  router.push({ pathname: '/event/edit', params: { id: eventId } });
+                }}
                 onPhotoPress={setViewerPhoto}
               />
             </View>
@@ -335,5 +417,23 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textMuted,
     fontWeight: '600',
+  },
+  harvestBlock: {
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  harvestSeasonTotal: {
+    ...typography.subtitle,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  yieldPerPlant: {
+    ...typography.caption,
+    color: colors.textMuted,
+  },
+  harvestLine: {
+    ...typography.body,
+    color: colors.text,
+    paddingVertical: spacing.xs,
   },
 });

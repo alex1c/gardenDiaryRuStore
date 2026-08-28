@@ -4,6 +4,7 @@
 
 import initSqlJs from 'sql.js';
 
+import { DIARY_FORM_TYPE_OPTIONS } from '@/src/domain/codes';
 import { createDatabaseFromClient } from '@/src/db/database';
 import { createSqlJsAdapter } from '@/src/db/sqlJsAdapter';
 import type { SqlDatabase } from '@/src/db/types';
@@ -81,6 +82,13 @@ async function seedFixture(): Promise<Fixture> {
     otherAreaId: otherArea.id,
   };
 }
+
+describe('Diary form types', () => {
+  test('DIARY_FORM_TYPE_OPTIONS has unique work types', () => {
+    const types = DIARY_FORM_TYPE_OPTIONS.map((option) => option.type);
+    expect(new Set(types).size).toBe(types.length);
+  });
+});
 
 describe('GardenEvent manual diary', () => {
   test('manual create, edit, delete', async () => {

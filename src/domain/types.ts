@@ -122,6 +122,8 @@ export type Harvest = {
   id: string;
   seasonId: string;
   plantingId: string;
+  /** Diary event auto-created for this harvest (sync on edit/delete). */
+  eventId: string | null;
   date: LocalDate;
   quantity: number;
   unit: HarvestUnit;

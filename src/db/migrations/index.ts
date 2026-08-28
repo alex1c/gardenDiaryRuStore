@@ -4,13 +4,15 @@
 
 import { migration001Initial } from './001_initial';
 import { migration002TaskProvenance } from './002_task_provenance';
+import { migration003HarvestEventLink } from './003_harvest_event_link';
 import type { Migration } from '../types';
 
 /** All forward migrations in ascending version order. */
 export const MIGRATIONS: readonly Migration[] = [
   migration001Initial,
   migration002TaskProvenance,
+  migration003HarvestEventLink,
 ];
 
 /** Highest schema version this app build knows how to apply. */
-export const CURRENT_SCHEMA_VERSION = 2;
+export const CURRENT_SCHEMA_VERSION = 3;
