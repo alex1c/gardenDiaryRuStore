@@ -1,0 +1,189 @@
+/**
+ * Garden area details — plantings list and actions.
+ */
+
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useMemo } from 'react';
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+
+import { Button } from '@/src/components/ui/Button';
+import { Card } from '@/src/components/ui/Card';
+import { EmptyState } from '@/src/components/ui/EmptyState';
+import { Screen } from '@/src/components/ui/Screen';
+import { GARDEN_AREA_TYPE_LABELS, PLANTING_STATUS_LABELS } from '@/src/domain/codes';
+
+export default function AreaDetailScreen() {
+  const router = useRouter();
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const { ready, areaRepository } = useDatabase();
+  const { loading, season, catalogById, plantingsByAreaId } = useGardenSnapshot();
+
+  const area = useMemo(() => {
+    if (!ready || !areaRepository || !id) {
+      return null;
+    }
+    return areaRepository.getById(id);
+  }, [ready, areaRepository, id]);
+
+  const plantings = id ? plantingsByAreaId.get(id) ?? [] : [];
+  const dimensions = area ? formatAreaDimensions(area.length, area.width) : null;
+
+  if (loading || !ready || !area) {
+    return (
+      <Screen>
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </Screen>
+    );
+  }
+
+  return (
+    <Screen scroll keyboardShouldPersistTaps="handled">
+      <Text style={styles.heading}>{area.name}</Text>
+      <Text style={styles.type}>{GARDEN_AREA_TYPE_LABELS[area.type]}</Text>
+      {dimensions ? <Text style={styles.meta}>{dimensions}</Text> : null}
+      {area.notes ? <Text style={styles.notes}>{area.notes}</Text> : null}
+
+      <View style={styles.toolbar}>
+        <Button
+          title="Редактировать зону"
+          variant="secondary"
+          onPress={() => router.push({ pathname: '/area/edit', params: { id: area.id } })}
+        />
+        <Button
+          title="+ Добавить культуру"
+          onPress={() =>
+            router.push({
+              pathname: '/planting/create',
+              params: { areaId: area.id },
+            })
+          }
+        />
+      </View>
+
+      {plantings.length === 0 ? (
+        <EmptyState
+          title="Пока пусто"
+          message="Здесь пока ничего не посажено."
+        >
+          <Button
+            title="+ Добавить культуру"
+            onPress={() =>
+              router.push({
+                pathname: '/planting/create',
+                params: { areaId: area.id },
+              })
+            }
+          />
+        </EmptyState>
+      ) : (
+        <View style={styles.list}>
+          {plantings.map((planting) => {
+            const catalog = catalogById.get(planting.catalogItemId);
+            const label = catalog ? formatCatalogLabel(catalog) : 'Посадка';
+            const qty = formatQuantityWithUnit(
+              planting.quantity,
+              planting.quantityUnit
+            );
+
+            return (
+              <Pressable
+                key={planting.id}
+                accessibilityRole="button"
+                onPress={() =>
+                  router.push({
+                    pathname: '/planting/edit',
+                    params: { id: planting.id },
+                  })
+                }
+              >
+                <Card style={styles.plantingCard}>
+                  <Text style={styles.plantingTitle} numberOfLines={2}>
+                    {label}
+                  </Text>
+                  {qty ? (
+                    <Text style={styles.plantingMeta} numberOfLines={1}>
+                      {qty}
+                    </Text>
+                  ) : null}
+                  <Text style={styles.plantingStatus}>
+                    {PLANTING_STATUS_LABELS[planting.status]}
+                  </Text>
+                </Card>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
+
+      {!season ? (
+        <Text style={styles.warning}>
+          Активный сезон не найден — посадки могут быть недоступны.
+        </Text>
+      ) : null}
+    </Screen>
+  );
+}
+
+const styles = StyleSheet.create({
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heading: {
+    ...typography.title,
+    color: colors.text,
+  },
+  type: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+  },
+  meta: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: spacing.xs,
+  },
+  notes: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginTop: spacing.sm,
+  },
+  toolbar: {
+    marginTop: spacing.lg,
+    marginBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  list: {
+    gap: spacing.sm,
+  },
+  plantingCard: {
+    gap: spacing.xs,
+  },
+  plantingTitle: {
+    ...typography.subtitle,
+    color: colors.text,
+    flexShrink: 1,
+  },
+  plantingMeta: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
+  plantingStatus: {
+    ...typography.caption,
+    color: colors.textMuted,
+  },
+  warning: {
+    ...typography.caption,
+    color: colors.warning,
+    marginTop: spacing.md,
+  },
+});

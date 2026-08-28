@@ -1,21 +1,26 @@
 /**
- * Участок — garden name, area list, add-area CTA.
+ * Участок — main plot screen with rich area cards.
  */
 
 import { useRouter } from 'expo-router';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
+import { AreaCard } from '@/src/components/area/AreaCard';
 import { Button } from '@/src/components/ui/Button';
-import { Card } from '@/src/components/ui/Card';
 import { EmptyState } from '@/src/components/ui/EmptyState';
 import { Screen } from '@/src/components/ui/Screen';
-import { GARDEN_AREA_TYPE_LABELS } from '@/src/domain/codes';
 import { useGardenSnapshot } from '@/src/hooks/useGardenSnapshot';
 import { colors, spacing, typography } from '@/src/theme/tokens';
 
 export default function PlotScreen() {
   const router = useRouter();
-  const { loading, garden, areas } = useGardenSnapshot();
+  const {
+    loading,
+    garden,
+    areas,
+    plantingsByAreaId,
+    catalogById,
+  } = useGardenSnapshot();
 
   if (loading) {
     return (
@@ -50,37 +55,39 @@ export default function PlotScreen() {
         <Text style={styles.sub}>{garden.locationName}</Text>
       ) : null}
 
-      <View style={styles.headerRow}>
-        <Text style={styles.sectionTitle}>Зоны</Text>
-        <Button
-          title="Добавить"
-          variant="secondary"
-          onPress={() => router.push('/area/create')}
-          style={styles.addBtn}
-        />
-      </View>
-
       {areas.length === 0 ? (
         <EmptyState
           title="Пока нет зон"
-          message="Добавьте грядку, теплицу или другую зону."
+          message="Добавьте первую грядку, теплицу или другую часть участка."
         >
           <Button
-            title="Добавить зону"
+            title="+ Добавить зону"
             onPress={() => router.push('/area/create')}
           />
         </EmptyState>
       ) : (
-        <View style={styles.list}>
-          {areas.map((area) => (
-            <Card key={area.id} style={styles.areaCard}>
-              <Text style={styles.areaName}>{area.name}</Text>
-              <Text style={styles.areaType}>
-                {GARDEN_AREA_TYPE_LABELS[area.type]}
-              </Text>
-            </Card>
-          ))}
-        </View>
+        <>
+          <View style={styles.headerRow}>
+            <Text style={styles.sectionTitle}>Зоны</Text>
+            <Button
+              title="Добавить"
+              variant="secondary"
+              onPress={() => router.push('/area/create')}
+              style={styles.addBtn}
+            />
+          </View>
+          <View style={styles.list}>
+            {areas.map((area) => (
+              <AreaCard
+                key={area.id}
+                area={area}
+                plantings={plantingsByAreaId.get(area.id) ?? []}
+                catalogById={catalogById}
+                onPress={() => router.push(`/area/${area.id}`)}
+              />
+            ))}
+          </View>
+        </>
       )}
     </Screen>
   );
@@ -119,17 +126,5 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: spacing.sm,
-  },
-  areaCard: {
-    gap: spacing.xs,
-  },
-  areaName: {
-    ...typography.body,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  areaType: {
-    ...typography.caption,
-    color: colors.textSecondary,
   },
 });

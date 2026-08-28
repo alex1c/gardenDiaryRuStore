@@ -2,7 +2,7 @@
  * Flexible decimal parsing for future form fields (3,4 and 3.4).
  */
 
-import { finalizeNumber, parseFlexibleNumber } from '@/src/utils/numeric';
+import { finalizeNumber, finalizePositiveNumber, parseFlexibleNumber } from '@/src/utils/numeric';
 import { kopecksToRubles, rublesToKopecks } from '@/src/utils/money';
 
 describe('numeric', () => {
@@ -21,6 +21,14 @@ describe('numeric', () => {
     expect(finalizeNumber('')).toBeNull();
     expect(() => finalizeNumber('1,')).toThrow();
     expect(finalizeNumber('2.5')).toBeCloseTo(2.5);
+  });
+});
+
+describe('positive numeric finalize', () => {
+  test('accepts positive values and rejects zero/negative', () => {
+    expect(finalizePositiveNumber('3,5')).toBeCloseTo(3.5);
+    expect(() => finalizePositiveNumber('0')).toThrow(/greater than zero/i);
+    expect(() => finalizePositiveNumber('-2')).toThrow();
   });
 });
 

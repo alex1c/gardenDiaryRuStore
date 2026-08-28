@@ -19,6 +19,7 @@ type ScreenProps = {
   scroll?: boolean;
   style?: StyleProp<ViewStyle>;
   contentStyle?: StyleProp<ViewStyle>;
+  keyboardShouldPersistTaps?: 'always' | 'never' | 'handled';
 };
 
 export function Screen({
@@ -26,11 +27,12 @@ export function Screen({
   scroll = false,
   style,
   contentStyle,
+  keyboardShouldPersistTaps = 'handled',
 }: ScreenProps) {
   const body = scroll ? (
     <ScrollView
       contentContainerStyle={[styles.content, contentStyle]}
-      keyboardShouldPersistTaps="handled"
+      keyboardShouldPersistTaps={keyboardShouldPersistTaps}
     >
       {children}
     </ScrollView>

@@ -147,6 +147,58 @@ export class PlantingRepository {
     }
   }
 
+  /** Plantings in one area for the given active season. */
+  listBySeasonAndArea(seasonId: string, areaId: string): Planting[] {
+    try {
+      const rows = this.db.getAll<PlantingRow>(
+        `SELECT id, season_id, area_id, catalog_item_id, quantity, quantity_unit,
+                sowing_date, transplant_date, harvest_start_date, status, notes,
+                created_at, updated_at
+         FROM plantings
+         WHERE season_id = ? AND area_id = ?
+         ORDER BY created_at ASC`,
+        [seasonId, areaId]
+      );
+      return rows.map(mapPlanting);
+    } catch (err) {
+      throw new StorageError('Failed to list plantings for area', err);
+    }
+  }
+
+  /**
+   * Creates a new planting copied from an existing one.
+   * Does not mutate the source row.
+   */
+  copy(sourceId: string, overrides: Partial<CreatePlantingInput> = {}): Planting {
+    const source = this.getById(sourceId);
+    if (!source) {
+      throw new StorageError(`Planting not found: ${sourceId}`);
+    }
+
+    return this.create({
+      seasonId: overrides.seasonId ?? source.seasonId,
+      catalogItemId: overrides.catalogItemId ?? source.catalogItemId,
+      areaId: overrides.areaId !== undefined ? overrides.areaId : source.areaId,
+      quantity: overrides.quantity !== undefined ? overrides.quantity : source.quantity,
+      quantityUnit:
+        overrides.quantityUnit !== undefined
+          ? overrides.quantityUnit
+          : source.quantityUnit,
+      sowingDate:
+        overrides.sowingDate !== undefined ? overrides.sowingDate : source.sowingDate,
+      transplantDate:
+        overrides.transplantDate !== undefined
+          ? overrides.transplantDate
+          : source.transplantDate,
+      harvestStartDate:
+        overrides.harvestStartDate !== undefined
+          ? overrides.harvestStartDate
+          : source.harvestStartDate,
+      status: overrides.status ?? source.status,
+      notes: overrides.notes !== undefined ? overrides.notes : source.notes,
+    });
+  }
+
   update(id: string, input: UpdatePlantingInput): Planting {
     const existing = this.getById(id);
     if (!existing) {

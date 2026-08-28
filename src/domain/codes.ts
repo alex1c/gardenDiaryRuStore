@@ -75,9 +75,44 @@ export const EXPENSE_CATEGORIES = [
 export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
 
 /** Optional quantity unit for plantings (distinct from harvest units). */
-export const QUANTITY_UNITS = ['pcs', 'rows', 'm2', 'other'] as const;
+export const QUANTITY_UNITS = [
+  'pcs',
+  'bushes',
+  'plants',
+  'rows',
+  'm2',
+  'other',
+] as const;
 
 export type QuantityUnit = (typeof QUANTITY_UNITS)[number];
+
+/** Russian labels for planting lifecycle statuses (UI). */
+export const PLANTING_STATUS_LABELS: Record<PlantingStatus, string> = {
+  planned: 'Планируется',
+  sown: 'Посеяно',
+  growing: 'Растёт',
+  harvesting: 'Урожай',
+  finished: 'Завершено',
+  failed: 'Не удалось',
+};
+
+/** Russian labels for planting quantity units (UI). */
+export const QUANTITY_UNIT_LABELS: Record<QuantityUnit, string> = {
+  pcs: 'шт.',
+  bushes: 'кустов',
+  plants: 'растений',
+  rows: 'рядов',
+  m2: 'м²',
+  other: 'другое',
+};
+
+/** Statuses that still represent an active crop on the plot. */
+export const ACTIVE_PLANTING_STATUSES: readonly PlantingStatus[] = [
+  'planned',
+  'sown',
+  'growing',
+  'harvesting',
+];
 
 /** Human-readable Russian labels for area types (UI). */
 export const GARDEN_AREA_TYPE_LABELS: Record<GardenAreaType, string> = {

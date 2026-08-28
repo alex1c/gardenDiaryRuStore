@@ -100,6 +100,40 @@ export class PlantCatalogRepository {
     }
   }
 
+  /**
+   * Finds a catalog item by species/variety within a garden (case-insensitive trim).
+   */
+  findMatching(
+    gardenId: string,
+    speciesName: string,
+    varietyName?: string | null
+  ): PlantCatalogItem | null {
+    const species = speciesName.trim();
+    const variety = emptyToNull(varietyName);
+
+    try {
+      const rows = this.db.getAll<CatalogRow>(
+        `SELECT id, garden_id, species_name, variety_name, notes, created_at, updated_at
+         FROM plant_catalog_items
+         WHERE garden_id = ?`,
+        [gardenId]
+      );
+
+      const match = rows.find((row) => {
+        const rowSpecies = row.species_name.trim();
+        const rowVariety = row.variety_name;
+        return (
+          rowSpecies.localeCompare(species, 'ru', { sensitivity: 'accent' }) === 0 &&
+          (rowVariety ?? null) === variety
+        );
+      });
+
+      return match ? mapCatalog(match) : null;
+    } catch (err) {
+      throw new StorageError('Failed to find catalog item', err);
+    }
+  }
+
   update(id: string, input: UpdateCatalogItemInput): PlantCatalogItem {
     const existing = this.getById(id);
     if (!existing) {

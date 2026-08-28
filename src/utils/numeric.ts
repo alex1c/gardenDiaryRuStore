@@ -60,3 +60,26 @@ export function finalizeNumber(input: string): number | null {
   }
   return parsed;
 }
+
+/**
+ * Finalizes a positive number for quantity / dimensions.
+ * Empty input → null; zero/negative → throws.
+ */
+export function finalizePositiveNumber(input: string): number | null {
+  const value = finalizeNumber(input);
+  if (value === null) {
+    return null;
+  }
+  if (value <= 0) {
+    throw new Error(`Value must be greater than zero: ${input}`);
+  }
+  return value;
+}
+
+/**
+ * Formats a stored number for Russian decimal display (dot → comma).
+ */
+export function formatDecimalForDisplay(value: number): string {
+  const text = String(value);
+  return text.includes('.') ? text.replace('.', ',') : text;
+}

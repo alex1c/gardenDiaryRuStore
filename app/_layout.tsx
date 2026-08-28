@@ -68,6 +68,22 @@ function RootNavigator() {
           name="area/create"
           options={{ title: 'Новая зона', presentation: 'modal' }}
         />
+        <Stack.Screen
+          name="area/[id]"
+          options={{ title: 'Зона' }}
+        />
+        <Stack.Screen
+          name="area/edit"
+          options={{ title: 'Редактировать зону', presentation: 'modal' }}
+        />
+        <Stack.Screen
+          name="planting/create"
+          options={{ title: 'Добавить культуру', presentation: 'modal' }}
+        />
+        <Stack.Screen
+          name="planting/edit"
+          options={{ title: 'Посадка', presentation: 'modal' }}
+        />
       </Stack>
     </>
   );
