@@ -92,6 +92,10 @@ export type GardenTask = {
   repeatType: RepeatType;
   repeatInterval: number | null;
   notes: string | null;
+  /** GardenEvent created when this task was marked complete (undo support). */
+  completionEventId: string | null;
+  /** Next recurring occurrence spawned by completion (undo support). */
+  spawnedTaskId: string | null;
   createdAt: UtcInstant;
   updatedAt: UtcInstant;
 };
@@ -167,6 +171,10 @@ export type AppSettings = {
   settingsVersion: number;
   onboardingCompleted: boolean;
   notificationsEnabled: boolean;
+  /** Local time HH:mm for the daily task reminder (default 09:00). */
+  notificationTime: string;
+  /** True after the user was offered to enable notifications. */
+  notificationsPromptShown: boolean;
   themePreference: ThemePreference;
   activeGardenId: string | null;
   activeSeasonId: string | null;
@@ -176,6 +184,8 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   settingsVersion: 1,
   onboardingCompleted: false,
   notificationsEnabled: false,
+  notificationTime: '09:00',
+  notificationsPromptShown: false,
   themePreference: 'system',
   activeGardenId: null,
   activeSeasonId: null,

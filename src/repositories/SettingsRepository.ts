@@ -21,6 +21,8 @@ const KEYS = {
   settingsVersion: 'settingsVersion',
   onboardingCompleted: 'onboardingCompleted',
   notificationsEnabled: 'notificationsEnabled',
+  notificationTime: 'notificationTime',
+  notificationsPromptShown: 'notificationsPromptShown',
   themePreference: 'themePreference',
   activeGardenId: 'activeGardenId',
   activeSeasonId: 'activeSeasonId',
@@ -48,6 +50,14 @@ export class SettingsRepository {
         notificationsEnabled: readBoolean(
           map.get(KEYS.notificationsEnabled),
           DEFAULT_APP_SETTINGS.notificationsEnabled
+        ),
+        notificationTime: readNotificationTime(
+          map.get(KEYS.notificationTime),
+          DEFAULT_APP_SETTINGS.notificationTime
+        ),
+        notificationsPromptShown: readBoolean(
+          map.get(KEYS.notificationsPromptShown),
+          DEFAULT_APP_SETTINGS.notificationsPromptShown
         ),
         themePreference: readTheme(
           map.get(KEYS.themePreference),
@@ -84,6 +94,12 @@ export class SettingsRepository {
       this.upsert(
         KEYS.notificationsEnabled,
         settings.notificationsEnabled ? '1' : '0',
+        now
+      );
+      this.upsert(KEYS.notificationTime, settings.notificationTime, now);
+      this.upsert(
+        KEYS.notificationsPromptShown,
+        settings.notificationsPromptShown ? '1' : '0',
         now
       );
       this.upsert(KEYS.themePreference, settings.themePreference, now);
@@ -145,4 +161,9 @@ function readNullableString(
   if (raw === undefined) return fallback;
   if (raw === '') return null;
   return raw;
+}
+
+function readNotificationTime(raw: string | undefined, fallback: string): string {
+  if (raw === undefined) return fallback;
+  return /^\d{1,2}:\d{2}$/.test(raw) ? raw : fallback;
 }

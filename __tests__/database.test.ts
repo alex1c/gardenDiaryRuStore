@@ -27,10 +27,10 @@ async function openTestDb(): Promise<SqlDatabase> {
 }
 
 describe('database foundation', () => {
-  test('fresh database initializes to schema version 1', async () => {
+  test('fresh database initializes to schema version 2', async () => {
     const db = await openTestDb();
     expect(db.getUserVersion()).toBe(CURRENT_SCHEMA_VERSION);
-    expect(CURRENT_SCHEMA_VERSION).toBe(1);
+    expect(CURRENT_SCHEMA_VERSION).toBe(2);
 
     const tables = db.getAll<{ name: string }>(
       `SELECT name FROM sqlite_master
@@ -62,18 +62,19 @@ describe('database foundation', () => {
     const db = await openTestDb();
     const migrations: Migration[] = [
       { version: 1, name: 'existing', up: () => undefined },
+      { version: 2, name: 'existing_v2', up: () => undefined },
       {
-        version: 2,
-        name: 'fake_v2',
-        up: (database) => database.exec('CREATE TABLE migration_v2_probe (id INTEGER)'),
+        version: 3,
+        name: 'fake_v3',
+        up: (database) => database.exec('CREATE TABLE migration_v3_probe (id INTEGER)'),
       },
     ];
 
     runMigrations(db, migrations);
     runMigrations(db, migrations);
 
-    expect(db.getUserVersion()).toBe(2);
-    expect(db.getAll("SELECT name FROM sqlite_master WHERE name = 'migration_v2_probe'"))
+    expect(db.getUserVersion()).toBe(3);
+    expect(db.getAll("SELECT name FROM sqlite_master WHERE name = 'migration_v3_probe'"))
       .toHaveLength(1);
   });
 
@@ -81,9 +82,10 @@ describe('database foundation', () => {
     const db = await openTestDb();
     const migrations: Migration[] = [
       { version: 1, name: 'existing', up: () => undefined },
+      { version: 2, name: 'existing_v2', up: () => undefined },
       {
-        version: 2,
-        name: 'broken_v2',
+        version: 3,
+        name: 'broken_v3',
         up: (database) => {
           database.exec('CREATE TABLE must_rollback (id INTEGER)');
           database.exec('THIS IS NOT SQL');
@@ -91,8 +93,8 @@ describe('database foundation', () => {
       },
     ];
 
-    expect(() => runMigrations(db, migrations)).toThrow(/Migration 2/);
-    expect(db.getUserVersion()).toBe(1);
+    expect(() => runMigrations(db, migrations)).toThrow(/Migration 3/);
+    expect(db.getUserVersion()).toBe(CURRENT_SCHEMA_VERSION);
     expect(db.getAll("SELECT name FROM sqlite_master WHERE name = 'must_rollback'"))
       .toHaveLength(0);
   });

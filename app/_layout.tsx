@@ -10,6 +10,7 @@ import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
 import { DatabaseProvider, useDatabase } from '@/src/providers/DatabaseProvider';
+import { configureNotificationHandler } from '@/src/services/notificationScheduler';
 import { colors, spacing, typography } from '@/src/theme/tokens';
 
 export { ErrorBoundary } from 'expo-router';
@@ -19,6 +20,7 @@ export const unstable_settings = {
 };
 
 SplashScreen.preventAutoHideAsync();
+configureNotificationHandler();
 
 export default function RootLayout() {
   return (
@@ -83,6 +85,14 @@ function RootNavigator() {
         <Stack.Screen
           name="planting/edit"
           options={{ title: 'Посадка', presentation: 'modal' }}
+        />
+        <Stack.Screen
+          name="task/create"
+          options={{ title: 'Новое дело', presentation: 'modal' }}
+        />
+        <Stack.Screen
+          name="task/edit"
+          options={{ title: 'Дело', presentation: 'modal' }}
         />
       </Stack>
     </>

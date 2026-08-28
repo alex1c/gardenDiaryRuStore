@@ -114,6 +114,40 @@ export const ACTIVE_PLANTING_STATUSES: readonly PlantingStatus[] = [
   'harvesting',
 ];
 
+/** Russian labels for work / task types (UI). Emoji kept subtle in display helpers. */
+export const WORK_TYPE_LABELS: Record<WorkType, string> = {
+  watering: 'Полив',
+  feeding: 'Подкормка',
+  treatment: 'Обработка',
+  sowing: 'Посев',
+  transplanting: 'Высадка',
+  weeding: 'Прополка',
+  pruning: 'Обрезка',
+  harvesting: 'Сбор урожая',
+  other: 'Другое',
+};
+
+/** Optional emoji prefix for work types (used sparingly in cards). */
+export const WORK_TYPE_EMOJI: Record<WorkType, string> = {
+  watering: '💧',
+  feeding: '🌱',
+  treatment: '🛡',
+  sowing: '🌾',
+  transplanting: '🪴',
+  weeding: '🌿',
+  pruning: '✂',
+  harvesting: '🧺',
+  other: '',
+};
+
+/** Russian labels for task repeat options. */
+export const REPEAT_TYPE_LABELS: Record<RepeatType, string> = {
+  none: 'Не повторять',
+  daily: 'Каждый день',
+  every_n_days: 'Каждые N дней',
+  weekly: 'Каждую неделю',
+};
+
 /** Human-readable Russian labels for area types (UI). */
 export const GARDEN_AREA_TYPE_LABELS: Record<GardenAreaType, string> = {
   garden_bed: 'Грядка',

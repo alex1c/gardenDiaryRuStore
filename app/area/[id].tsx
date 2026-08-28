@@ -17,6 +17,14 @@ import { Card } from '@/src/components/ui/Card';
 import { EmptyState } from '@/src/components/ui/EmptyState';
 import { Screen } from '@/src/components/ui/Screen';
 import { GARDEN_AREA_TYPE_LABELS, PLANTING_STATUS_LABELS } from '@/src/domain/codes';
+import { useGardenSnapshot } from '@/src/hooks/useGardenSnapshot';
+import { useDatabase } from '@/src/providers/DatabaseProvider';
+import {
+  formatAreaDimensions,
+  formatCatalogLabel,
+  formatQuantityWithUnit,
+} from '@/src/services/plantingDisplay';
+import { colors, spacing, typography } from '@/src/theme/tokens';
 
 export default function AreaDetailScreen() {
   const router = useRouter();
@@ -62,6 +70,16 @@ export default function AreaDetailScreen() {
           onPress={() =>
             router.push({
               pathname: '/planting/create',
+              params: { areaId: area.id },
+            })
+          }
+        />
+        <Button
+          title="+ Дело"
+          variant="secondary"
+          onPress={() =>
+            router.push({
+              pathname: '/task/create',
               params: { areaId: area.id },
             })
           }

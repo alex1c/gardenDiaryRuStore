@@ -16,7 +16,9 @@ import { openAppDatabase } from '@/src/db/database';
 import type { SqlDatabase } from '@/src/db/types';
 import { formatErrorForDiagnostics } from '@/src/domain/errors';
 import { GardenAreaRepository } from '@/src/repositories/GardenAreaRepository';
+import { GardenEventRepository } from '@/src/repositories/GardenEventRepository';
 import { GardenRepository } from '@/src/repositories/GardenRepository';
+import { GardenTaskRepository } from '@/src/repositories/GardenTaskRepository';
 import { PlantCatalogRepository } from '@/src/repositories/PlantCatalogRepository';
 import { PlantingRepository } from '@/src/repositories/PlantingRepository';
 import { SeasonRepository } from '@/src/repositories/SeasonRepository';
@@ -34,6 +36,8 @@ export type DatabaseContextValue = {
   areaRepository: GardenAreaRepository | null;
   catalogRepository: PlantCatalogRepository | null;
   plantingRepository: PlantingRepository | null;
+  taskRepository: GardenTaskRepository | null;
+  eventRepository: GardenEventRepository | null;
   settingsRepository: SettingsRepository | null;
 };
 
@@ -95,6 +99,8 @@ export function DatabaseProvider({ children }: Props) {
         areaRepository: null,
         catalogRepository: null,
         plantingRepository: null,
+        taskRepository: null,
+        eventRepository: null,
         settingsRepository: null,
       };
     }
@@ -110,6 +116,8 @@ export function DatabaseProvider({ children }: Props) {
       areaRepository: new GardenAreaRepository(db),
       catalogRepository: new PlantCatalogRepository(db),
       plantingRepository: new PlantingRepository(db),
+      taskRepository: new GardenTaskRepository(db),
+      eventRepository: new GardenEventRepository(db),
       settingsRepository: new SettingsRepository(db),
     };
   }, [db, error, refreshToken, bumpRefresh]);
