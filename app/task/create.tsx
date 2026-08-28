@@ -21,21 +21,21 @@ export default function CreateTaskScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ areaId?: string; plantingId?: string }>();
   const { bumpRefresh, taskRepository, settingsRepository } = useDatabase();
-  const { loading, season, areas, plantings, catalogById } = useGardenSnapshot();
+  const { loading, activeSeason, areas, activePlantings, catalogById } = useGardenSnapshot();
   const [saving, setSaving] = useState(false);
   const [showNotifyPrompt, setShowNotifyPrompt] = useState(false);
 
   const handleSubmit = useCallback(
     async (values: TaskFormValues) => {
-      if (!taskRepository || !season || !settingsRepository) {
+      if (!taskRepository || !activeSeason || !settingsRepository) {
         return;
       }
 
       setSaving(true);
       try {
-        const hadTasks = taskRepository.listBySeason(season.id).length > 0;
+        const hadTasks = taskRepository.listBySeason(activeSeason.id).length > 0;
         taskRepository.create({
-          seasonId: season.id,
+          seasonId: activeSeason.id,
           title: values.title,
           type: values.type,
           dueDate: values.dueDate,
@@ -61,7 +61,7 @@ export default function CreateTaskScreen() {
         setSaving(false);
       }
     },
-    [taskRepository, season, settingsRepository, bumpRefresh, router]
+    [taskRepository, activeSeason, settingsRepository, bumpRefresh, router]
   );
 
   const handleEnableNotifications = async () => {
@@ -87,7 +87,7 @@ export default function CreateTaskScreen() {
     router.back();
   };
 
-  if (loading || !season) {
+  if (loading || !activeSeason) {
     return (
       <Screen>
         <View style={styles.center}>
@@ -102,7 +102,7 @@ export default function CreateTaskScreen() {
       <Text style={styles.heading}>+ Добавить дело</Text>
       <TaskForm
         areas={areas}
-        plantings={plantings}
+        plantings={activePlantings}
         catalogById={catalogById}
         initialAreaId={params.areaId ?? null}
         initialPlantingId={params.plantingId ?? null}

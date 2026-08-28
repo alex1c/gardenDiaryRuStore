@@ -18,6 +18,7 @@ import { formatErrorForDiagnostics } from '@/src/domain/errors';
 import { GardenAreaRepository } from '@/src/repositories/GardenAreaRepository';
 import { GardenEventRepository } from '@/src/repositories/GardenEventRepository';
 import { GardenPhotoRepository } from '@/src/repositories/GardenPhotoRepository';
+import { GardenPlantRepository } from '@/src/repositories/GardenPlantRepository';
 import { GardenRepository } from '@/src/repositories/GardenRepository';
 import { GardenTaskRepository } from '@/src/repositories/GardenTaskRepository';
 import { HarvestRepository } from '@/src/repositories/HarvestRepository';
@@ -39,6 +40,7 @@ export type DatabaseContextValue = {
   areaRepository: GardenAreaRepository | null;
   catalogRepository: PlantCatalogRepository | null;
   plantingRepository: PlantingRepository | null;
+  gardenPlantRepository: GardenPlantRepository | null;
   taskRepository: GardenTaskRepository | null;
   eventRepository: GardenEventRepository | null;
   photoRepository: GardenPhotoRepository | null;
@@ -105,6 +107,7 @@ export function DatabaseProvider({ children }: Props) {
         areaRepository: null,
         catalogRepository: null,
         plantingRepository: null,
+        gardenPlantRepository: null,
         taskRepository: null,
         eventRepository: null,
         photoRepository: null,
@@ -125,6 +128,7 @@ export function DatabaseProvider({ children }: Props) {
       areaRepository: new GardenAreaRepository(db),
       catalogRepository: new PlantCatalogRepository(db),
       plantingRepository: new PlantingRepository(db),
+      gardenPlantRepository: new GardenPlantRepository(db),
       taskRepository: new GardenTaskRepository(db),
       eventRepository: new GardenEventRepository(db),
       photoRepository: new GardenPhotoRepository(db),

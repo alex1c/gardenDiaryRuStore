@@ -14,6 +14,7 @@ import { Screen } from '@/src/components/ui/Screen';
 import { useGardenSnapshot } from '@/src/hooks/useGardenSnapshot';
 import { useDatabase } from '@/src/providers/DatabaseProvider';
 import { resolveCatalogItemForPlanting } from '@/src/services/plantCatalogService';
+import { createPlantingWithOptionalPerennial } from '@/src/services/plantingService';
 import { colors, typography } from '@/src/theme/tokens';
 
 export default function CreatePlantingScreen() {
@@ -22,9 +23,9 @@ export default function CreatePlantingScreen() {
     areaId?: string;
     copyFrom?: string;
   }>();
-  const { plantingRepository, catalogRepository, bumpRefresh, ready } =
+  const { db, plantingRepository, catalogRepository, bumpRefresh, ready } =
     useDatabase();
-  const { loading, garden, season, areas, catalogItems, catalogById } =
+  const { loading, garden, activeSeason, areas, catalogItems, catalogById } =
     useGardenSnapshot();
   const [saving, setSaving] = useState(false);
 
@@ -42,12 +43,12 @@ export default function CreatePlantingScreen() {
     return catalogById.get(sourcePlanting.catalogItemId) ?? null;
   }, [sourcePlanting, catalogById]);
 
-  if (loading || !ready || !garden || !season) {
+  if (loading || !ready || !garden || !activeSeason) {
     return (
       <Screen>
         <View style={styles.center}>
           <ActivityIndicator size="large" color={colors.primary} />
-          {ready && !season ? (
+          {ready && !activeSeason ? (
             <Text style={styles.missing}>Сначала создайте участок и сезон</Text>
           ) : null}
         </View>
@@ -56,7 +57,7 @@ export default function CreatePlantingScreen() {
   }
 
   const handleSubmit = (values: PlantingFormValues) => {
-    if (!plantingRepository || !catalogRepository) {
+    if (!plantingRepository || !catalogRepository || !db) {
       return;
     }
 
@@ -71,7 +72,7 @@ export default function CreatePlantingScreen() {
 
       if (copyFrom && sourcePlanting) {
         plantingRepository.copy(copyFrom, {
-          seasonId: season.id,
+          seasonId: activeSeason.id,
           catalogItemId: catalogItem.id,
           areaId: values.areaId,
           quantity: values.quantity,
@@ -82,8 +83,8 @@ export default function CreatePlantingScreen() {
           notes: values.notes,
         });
       } else {
-        plantingRepository.create({
-          seasonId: season.id,
+        createPlantingWithOptionalPerennial(db, {
+          seasonId: activeSeason.id,
           catalogItemId: catalogItem.id,
           areaId: values.areaId,
           quantity: values.quantity,
@@ -92,6 +93,7 @@ export default function CreatePlantingScreen() {
           sowingDate: values.sowingDate,
           transplantDate: values.transplantDate,
           notes: values.notes,
+          isPerennial: values.isPerennial,
         });
       }
 

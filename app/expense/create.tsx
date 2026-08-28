@@ -21,18 +21,18 @@ export default function CreateExpenseScreen() {
     plantingId?: string;
   }>();
   const { bumpRefresh, expenseRepository } = useDatabase();
-  const { loading, season, areas, plantings, catalogById } = useGardenSnapshot();
+  const { loading, activeSeason, areas, activePlantings, catalogById } = useGardenSnapshot();
   const [saving, setSaving] = useState(false);
 
   const handleSubmit = (values: ExpenseFormValues) => {
-    if (!expenseRepository || !season) {
+    if (!expenseRepository || !activeSeason) {
       return;
     }
 
     setSaving(true);
     try {
       expenseRepository.create({
-        seasonId: season.id,
+        seasonId: activeSeason.id,
         date: values.date,
         category: values.category,
         amountKopecks: values.amountKopecks,
@@ -47,7 +47,7 @@ export default function CreateExpenseScreen() {
     }
   };
 
-  if (loading || !season) {
+  if (loading || !activeSeason) {
     return (
       <Screen>
         <View style={styles.center}>
@@ -62,7 +62,7 @@ export default function CreateExpenseScreen() {
       <Text style={styles.heading}>+ Расход</Text>
       <ExpenseForm
         areas={areas}
-        plantings={plantings}
+        plantings={activePlantings}
         catalogById={catalogById}
         initialAreaId={params.areaId ?? null}
         initialPlantingId={params.plantingId ?? null}

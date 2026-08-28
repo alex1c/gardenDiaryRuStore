@@ -69,11 +69,29 @@ export type Planting = {
   seasonId: string;
   areaId: string | null;
   catalogItemId: string;
+  /** Garden-level perennial identity when this planting continues across seasons. */
+  gardenPlantId: string | null;
   quantity: number | null;
   quantityUnit: QuantityUnit | null;
   sowingDate: LocalDate | null;
   transplantDate: LocalDate | null;
   harvestStartDate: LocalDate | null;
+  status: PlantingStatus;
+  notes: string | null;
+  createdAt: UtcInstant;
+  updatedAt: UtcInstant;
+};
+
+/** Garden-level physical plant identity (perennials span seasons). */
+export type GardenPlant = {
+  id: string;
+  gardenId: string;
+  areaId: string | null;
+  catalogItemId: string;
+  name: string | null;
+  quantity: number | null;
+  quantityUnit: QuantityUnit | null;
+  plantedDate: LocalDate | null;
   status: PlantingStatus;
   notes: string | null;
   createdAt: UtcInstant;

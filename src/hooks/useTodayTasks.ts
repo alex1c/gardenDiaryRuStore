@@ -21,7 +21,7 @@ export type TodayTasksSnapshot = {
 };
 
 export function useTodayTasks(): TodayTasksSnapshot {
-  const { season } = useGardenSnapshot();
+  const { activeSeason } = useGardenSnapshot();
   const { ready, refreshToken, taskRepository } = useDatabase();
   const [loading, setLoading] = useState(true);
   const [overdue, setOverdue] = useState<GardenTask[]>([]);
@@ -34,7 +34,7 @@ export function useTodayTasks(): TodayTasksSnapshot {
   const today = useMemo(() => toLocalDateString(new Date()), [refreshToken]);
 
   const reload = useCallback(() => {
-    if (!ready || !taskRepository || !season) {
+    if (!ready || !taskRepository || !activeSeason) {
       setOverdue([]);
       setTodayTasks([]);
       setCompletedToday([]);
@@ -43,12 +43,12 @@ export function useTodayTasks(): TodayTasksSnapshot {
       return;
     }
 
-    setOverdue(taskRepository.listOverdue(season.id, today));
-    setTodayTasks(taskRepository.listForDate(season.id, today));
-    setCompletedToday(taskRepository.listCompletedForDate(season.id, today));
-    setUpcoming(taskRepository.listUpcoming(season.id, today, 7));
+    setOverdue(taskRepository.listOverdue(activeSeason.id, today));
+    setTodayTasks(taskRepository.listForDate(activeSeason.id, today));
+    setCompletedToday(taskRepository.listCompletedForDate(activeSeason.id, today));
+    setUpcoming(taskRepository.listUpcoming(activeSeason.id, today, 7));
     setLoading(false);
-  }, [ready, taskRepository, season, today]);
+  }, [ready, taskRepository, activeSeason, today]);
 
   useEffect(() => {
     let cancelled = false;

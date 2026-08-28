@@ -39,7 +39,7 @@ import {
 export default function PlantingDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { db, bumpRefresh, plantingRepository, eventRepository, photoRepository, areaRepository, harvestRepository, refreshToken } =
+  const { db, bumpRefresh, plantingRepository, eventRepository, photoRepository, areaRepository, harvestRepository, gardenPlantRepository, refreshToken } =
     useDatabase();
   const { loading, garden, season, areas, catalogById } = useGardenSnapshot();
   const [viewerPhoto, setViewerPhoto] = useState<GardenPhoto | null>(null);
@@ -57,6 +57,13 @@ export default function PlantingDetailScreen() {
     }
     return catalogById.get(planting.catalogItemId) ?? null;
   }, [planting, catalogById]);
+
+  const gardenPlant = useMemo(() => {
+    if (!gardenPlantRepository || !planting?.gardenPlantId) {
+      return null;
+    }
+    return gardenPlantRepository.getById(planting.gardenPlantId);
+  }, [gardenPlantRepository, planting]);
 
   const area = useMemo(() => {
     if (!areaRepository || !planting?.areaId) {
@@ -196,6 +203,14 @@ export default function PlantingDetailScreen() {
       {varietyLine ? <Text style={styles.variety}>{varietyLine}</Text> : null}
       {area ? <Text style={styles.meta}>{area.name}</Text> : null}
       {qty ? <Text style={styles.meta}>{qty}</Text> : null}
+      {gardenPlant ? (
+        <Text style={styles.perennial}>
+          Многолетнее
+          {gardenPlant.plantedDate
+            ? ` · посажено ${formatLocalDateShort(gardenPlant.plantedDate)}`
+            : ''}
+        </Text>
+      ) : null}
       <Text style={styles.status}>{PLANTING_STATUS_LABELS[planting.status]}</Text>
       {planting.notes ? <Text style={styles.notes}>{planting.notes}</Text> : null}
 
@@ -432,6 +447,12 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.textSecondary,
     marginTop: spacing.xs,
+  },
+  perennial: {
+    ...typography.body,
+    color: colors.primary,
+    marginTop: spacing.xs,
+    fontWeight: '600',
   },
   status: {
     ...typography.body,

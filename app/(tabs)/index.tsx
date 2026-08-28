@@ -30,7 +30,7 @@ import { addDaysToLocalDate } from '@/src/utils/localDate';
 export default function TodayScreen() {
   const router = useRouter();
   const { db, bumpRefresh, taskRepository, settingsRepository, refreshToken } = useDatabase();
-  const { loading: gardenLoading, garden, season, areas, plantings, catalogById } =
+  const { loading: gardenLoading, garden, activeSeason, activePlantings, areas, catalogById } =
     useGardenSnapshot();
   const {
     loading: tasksLoading,
@@ -49,20 +49,20 @@ export default function TodayScreen() {
     [areas]
   );
   const plantingsById = useMemo(
-    () => new Map(plantings.map((p) => [p.id, p])),
-    [plantings]
+    () => new Map(activePlantings.map((p) => [p.id, p])),
+    [activePlantings]
   );
 
   const hasActiveTasks = overdue.length > 0 || todayTasks.length > 0;
   const loading = gardenLoading || tasksLoading;
 
   const todayHarvestLines = useMemo(() => {
-    if (!db || !season) {
+    if (!db || !activeSeason) {
       return [];
     }
-    return new HarvestStatsService(db).getTodayHarvestLines(season.id, today);
+    return new HarvestStatsService(db).getTodayHarvestLines(activeSeason.id, today);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- refreshToken busts cache
-  }, [db, season, today, refreshToken]);
+  }, [db, activeSeason, today, refreshToken]);
 
   const handleComplete = useCallback(
     async (taskId: string) => {
@@ -134,7 +134,7 @@ export default function TodayScreen() {
     );
   }
 
-  if (!season) {
+  if (!activeSeason) {
     return (
       <Screen scroll>
         <EmptyState
@@ -150,7 +150,7 @@ export default function TodayScreen() {
       <Text style={styles.heading}>Сегодня</Text>
       <Text style={styles.dateLine}>{formatLocalDateLong(today)}</Text>
       <Text style={styles.sub}>
-        {garden.name} · {season.title}
+        {garden.name} · {activeSeason.title}
       </Text>
 
       <View style={styles.toolbar}>

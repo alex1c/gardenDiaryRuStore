@@ -5,6 +5,7 @@
 import { useRouter } from 'expo-router';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
+import { SeasonBrowseBanner } from '@/src/components/season/SeasonBrowseBanner';
 import { AreaCard } from '@/src/components/area/AreaCard';
 import { Button } from '@/src/components/ui/Button';
 import { EmptyState } from '@/src/components/ui/EmptyState';
@@ -50,6 +51,7 @@ export default function PlotScreen() {
 
   return (
     <Screen scroll>
+      <SeasonBrowseBanner />
       <Text style={styles.heading}>{garden.name}</Text>
       {garden.locationName ? (
         <Text style={styles.sub}>{garden.locationName}</Text>

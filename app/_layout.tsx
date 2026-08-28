@@ -10,6 +10,7 @@ import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
 import { DatabaseProvider, useDatabase } from '@/src/providers/DatabaseProvider';
+import { SeasonProvider } from '@/src/providers/SeasonProvider';
 import { configureNotificationHandler } from '@/src/services/notificationScheduler';
 import { colors, spacing, typography } from '@/src/theme/tokens';
 
@@ -25,7 +26,9 @@ configureNotificationHandler();
 export default function RootLayout() {
   return (
     <DatabaseProvider>
-      <RootNavigator />
+      <SeasonProvider>
+        <RootNavigator />
+      </SeasonProvider>
     </DatabaseProvider>
   );
 }
@@ -117,6 +120,18 @@ function RootNavigator() {
         <Stack.Screen
           name="expense/list"
           options={{ title: 'Все расходы' }}
+        />
+        <Stack.Screen
+          name="season/index"
+          options={{ title: 'Сезоны' }}
+        />
+        <Stack.Screen
+          name="season/create"
+          options={{ title: 'Новый сезон', presentation: 'modal' }}
+        />
+        <Stack.Screen
+          name="season/compare"
+          options={{ title: 'Сравнение сезонов' }}
         />
         <Stack.Screen
           name="task/create"

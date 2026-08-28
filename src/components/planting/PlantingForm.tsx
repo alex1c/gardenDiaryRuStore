@@ -3,7 +3,7 @@
  */
 
 import React, { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { Button } from '@/src/components/ui/Button';
 import { NumericField } from '@/src/components/ui/NumericField';
@@ -39,6 +39,8 @@ export type PlantingFormValues = {
   transplantDate: string | null;
   notes: string | null;
   preferredCatalogItemId: string | null;
+  /** When true, creates a garden-level plant identity spanning seasons. */
+  isPerennial: boolean;
 };
 
 type PlantingFormProps = {
@@ -47,6 +49,8 @@ type PlantingFormProps = {
   initialAreaId?: string | null;
   initialPlanting?: Planting | null;
   initialCatalog?: PlantCatalogItem | null;
+  /** Initial perennial toggle (edit mode when gardenPlantId is set). */
+  initialIsPerennial?: boolean;
   submitLabel: string;
   onSubmit: (values: PlantingFormValues) => void;
   onCancel: () => void;
@@ -60,6 +64,7 @@ export function PlantingForm({
   initialAreaId,
   initialPlanting,
   initialCatalog,
+  initialIsPerennial = false,
   submitLabel,
   onSubmit,
   onCancel,
@@ -96,6 +101,9 @@ export function PlantingForm({
   const [notes, setNotes] = useState(initialPlanting?.notes ?? '');
   const [selectedCatalogId, setSelectedCatalogId] = useState<string | null>(
     initialCatalog?.id ?? null
+  );
+  const [isPerennial, setIsPerennial] = useState(
+    initialIsPerennial || Boolean(initialPlanting?.gardenPlantId)
   );
   const [error, setError] = useState<string | null>(null);
 
@@ -165,6 +173,7 @@ export function PlantingForm({
         transplantDate: transplant,
         notes: notes.trim() || null,
         preferredCatalogItemId: selectedCatalogId,
+        isPerennial,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -268,6 +277,20 @@ export function PlantingForm({
           </View>
         </>
       ) : null}
+
+      <View style={styles.perennialRow}>
+        <View style={styles.perennialText}>
+          <Text style={styles.sectionLabel}>Многолетнее растение</Text>
+          <Text style={styles.perennialHint}>
+            Сохраняет identity между сезонами (яблоня, смородина, клубника).
+          </Text>
+        </View>
+        <Switch
+          value={isPerennial}
+          onValueChange={setIsPerennial}
+          disabled={Boolean(initialPlanting?.gardenPlantId)}
+        />
+      </View>
 
       <Text style={styles.sectionLabel}>Статус</Text>
       <View style={styles.chipRow}>
@@ -415,6 +438,21 @@ const styles = StyleSheet.create({
   },
   extraBlock: {
     gap: spacing.sm,
+  },
+  perennialRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+    marginTop: spacing.sm,
+  },
+  perennialText: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  perennialHint: {
+    ...typography.caption,
+    color: colors.textMuted,
   },
   notes: {
     minHeight: 88,

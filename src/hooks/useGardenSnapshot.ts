@@ -11,14 +11,21 @@ import type {
   Planting,
   Season,
 } from '@/src/domain/types';
+import { useSeasonContext } from '@/src/providers/SeasonProvider';
 import { useDatabase } from '@/src/providers/DatabaseProvider';
 
 export type GardenSnapshot = {
   loading: boolean;
   garden: Garden | null;
+  /** Season shown in browse screens (Stats, Diary, Plot). */
   season: Season | null;
+  /** Working active season (Today, new records). */
+  activeSeason: Season | null;
+  isViewingArchive: boolean;
   areas: GardenArea[];
   plantings: Planting[];
+  /** Plantings for the active working season (Today screen). */
+  activePlantings: Planting[];
   catalogItems: PlantCatalogItem[];
   catalogById: Map<string, PlantCatalogItem>;
   plantingsByAreaId: Map<string, Planting[]>;
@@ -30,24 +37,29 @@ export function useGardenSnapshot(): GardenSnapshot {
     ready,
     refreshToken,
     gardenRepository,
-    seasonRepository,
     areaRepository,
     plantingRepository,
     catalogRepository,
   } = useDatabase();
+  const {
+    loading: seasonLoading,
+    viewedSeason,
+    activeSeason,
+    isViewingArchive,
+  } = useSeasonContext();
 
   const [loading, setLoading] = useState(true);
   const [garden, setGarden] = useState<Garden | null>(null);
   const [season, setSeason] = useState<Season | null>(null);
   const [areas, setAreas] = useState<GardenArea[]>([]);
   const [plantings, setPlantings] = useState<Planting[]>([]);
+  const [activePlantings, setActivePlantings] = useState<Planting[]>([]);
   const [catalogItems, setCatalogItems] = useState<PlantCatalogItem[]>([]);
 
   const reload = useCallback(() => {
     if (
       !ready ||
       !gardenRepository ||
-      !seasonRepository ||
       !areaRepository ||
       !plantingRepository ||
       !catalogRepository
@@ -63,26 +75,30 @@ export function useGardenSnapshot(): GardenSnapshot {
       setSeason(null);
       setAreas([]);
       setPlantings([]);
+      setActivePlantings([]);
       setCatalogItems([]);
       setLoading(false);
       return;
     }
 
-    const activeSeason = seasonRepository.getActiveForGarden(primary.id);
-    setSeason(activeSeason);
+    setSeason(viewedSeason);
     setAreas(areaRepository.listByGarden(primary.id));
     setCatalogItems(catalogRepository.listByGarden(primary.id));
     setPlantings(
+      viewedSeason ? plantingRepository.listBySeason(viewedSeason.id) : []
+    );
+    setActivePlantings(
       activeSeason ? plantingRepository.listBySeason(activeSeason.id) : []
     );
     setLoading(false);
   }, [
     ready,
     gardenRepository,
-    seasonRepository,
     areaRepository,
     plantingRepository,
     catalogRepository,
+    viewedSeason,
+    activeSeason,
   ]);
 
   useEffect(() => {
@@ -116,11 +132,14 @@ export function useGardenSnapshot(): GardenSnapshot {
   }, [plantings]);
 
   return {
-    loading,
+    loading: loading || seasonLoading,
     garden,
     season,
+    activeSeason,
+    isViewingArchive,
     areas,
     plantings,
+    activePlantings,
     catalogItems,
     catalogById,
     plantingsByAreaId,

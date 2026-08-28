@@ -20,18 +20,18 @@ export default function CreateHarvestScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ plantingId?: string }>();
   const { db, bumpRefresh } = useDatabase();
-  const { loading, season, plantings, catalogById } = useGardenSnapshot();
+  const { loading, activeSeason, activePlantings, catalogById } = useGardenSnapshot();
   const [saving, setSaving] = useState(false);
 
   const handleSubmit = async (values: HarvestFormValues) => {
-    if (!db || !season) {
+    if (!db || !activeSeason) {
       return;
     }
 
     setSaving(true);
     try {
       createHarvest(db, {
-        seasonId: season.id,
+        seasonId: activeSeason.id,
         plantingId: values.plantingId,
         date: values.date,
         quantity: values.quantity,
@@ -45,7 +45,7 @@ export default function CreateHarvestScreen() {
     }
   };
 
-  if (loading || !season) {
+  if (loading || !activeSeason) {
     return (
       <Screen>
         <View style={styles.center}>
@@ -55,7 +55,7 @@ export default function CreateHarvestScreen() {
     );
   }
 
-  if (plantings.length === 0) {
+  if (activePlantings.length === 0) {
     return (
       <Screen scroll>
         <EmptyState
@@ -70,7 +70,7 @@ export default function CreateHarvestScreen() {
     <Screen scroll keyboardShouldPersistTaps="handled">
       <Text style={styles.heading}>+ Урожай</Text>
       <HarvestForm
-        plantings={plantings}
+        plantings={activePlantings}
         catalogById={catalogById}
         initialPlantingId={params.plantingId ?? null}
         submitLabel="Сохранить"

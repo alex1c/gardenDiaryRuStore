@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 
+import { SeasonBrowseBanner } from '@/src/components/season/SeasonBrowseBanner';
 import { DiaryEventCard } from '@/src/components/diary/DiaryEventCard';
 import { PhotoViewerModal } from '@/src/components/photo/PhotoViewerModal';
 import { Button } from '@/src/components/ui/Button';
@@ -121,6 +122,7 @@ export default function DiaryScreen() {
 
   return (
     <Screen scroll keyboardShouldPersistTaps="handled">
+      <SeasonBrowseBanner />
       <Text style={styles.heading}>Дневник</Text>
 
       <View style={styles.toolbar}>

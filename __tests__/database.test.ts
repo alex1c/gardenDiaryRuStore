@@ -27,10 +27,10 @@ async function openTestDb(): Promise<SqlDatabase> {
 }
 
 describe('database foundation', () => {
-  test('fresh database initializes to schema version 3', async () => {
+  test('fresh database initializes to schema version 4', async () => {
     const db = await openTestDb();
     expect(db.getUserVersion()).toBe(CURRENT_SCHEMA_VERSION);
-    expect(CURRENT_SCHEMA_VERSION).toBe(3);
+    expect(CURRENT_SCHEMA_VERSION).toBe(4);
 
     const tables = db.getAll<{ name: string }>(
       `SELECT name FROM sqlite_master
@@ -64,18 +64,19 @@ describe('database foundation', () => {
       { version: 1, name: 'existing', up: () => undefined },
       { version: 2, name: 'existing_v2', up: () => undefined },
       { version: 3, name: 'existing_v3', up: () => undefined },
+      { version: 4, name: 'existing_v4', up: () => undefined },
       {
-        version: 4,
-        name: 'fake_v4',
-        up: (database) => database.exec('CREATE TABLE migration_v4_probe (id INTEGER)'),
+        version: 5,
+        name: 'fake_v5',
+        up: (database) => database.exec('CREATE TABLE migration_v5_probe (id INTEGER)'),
       },
     ];
 
     runMigrations(db, migrations);
     runMigrations(db, migrations);
 
-    expect(db.getUserVersion()).toBe(4);
-    expect(db.getAll("SELECT name FROM sqlite_master WHERE name = 'migration_v4_probe'"))
+    expect(db.getUserVersion()).toBe(5);
+    expect(db.getAll("SELECT name FROM sqlite_master WHERE name = 'migration_v5_probe'"))
       .toHaveLength(1);
   });
 
@@ -85,9 +86,10 @@ describe('database foundation', () => {
       { version: 1, name: 'existing', up: () => undefined },
       { version: 2, name: 'existing_v2', up: () => undefined },
       { version: 3, name: 'existing_v3', up: () => undefined },
+      { version: 4, name: 'existing_v4', up: () => undefined },
       {
-        version: 4,
-        name: 'broken_v4',
+        version: 5,
+        name: 'broken_v5',
         up: (database) => {
           database.exec('CREATE TABLE must_rollback (id INTEGER)');
           database.exec('THIS IS NOT SQL');
@@ -95,7 +97,7 @@ describe('database foundation', () => {
       },
     ];
 
-    expect(() => runMigrations(db, migrations)).toThrow(/Migration 4/);
+    expect(() => runMigrations(db, migrations)).toThrow(/Migration 5/);
     expect(db.getUserVersion()).toBe(CURRENT_SCHEMA_VERSION);
     expect(db.getAll("SELECT name FROM sqlite_master WHERE name = 'must_rollback'"))
       .toHaveLength(0);
@@ -110,7 +112,7 @@ describe('database foundation', () => {
       ])
     ).toThrow(/expected version 2/);
 
-    db.setUserVersion(4);
+    db.setUserVersion(5);
     expect(() => runMigrations(db)).toThrow(/newer than supported/);
   });
 });
@@ -194,16 +196,24 @@ describe('PlantCatalog + Planting', () => {
     expect(plantings.listBySeason(season.id)).toHaveLength(1);
   });
 
-  test('active season selection is deterministic when several are open', async () => {
+  test('active season selection is deterministic when several years exist', async () => {
     const db = await openTestDb();
     const { garden } = bootstrapGardenWithSeason(db, { gardenName: 'Seasons', year: 2026 });
     const seasons = new SeasonRepository(db);
-    seasons.create({ gardenId: garden.id, year: 2027, title: 'First 2027' });
-    seasons.create({ gardenId: garden.id, year: 2027, title: 'Second 2027' });
+    seasons.create({ gardenId: garden.id, year: 2027, title: 'Season 2027' });
 
-    const firstRead = seasons.getActiveForGarden(garden.id);
-    expect(firstRead?.year).toBe(2027);
-    expect(seasons.getActiveForGarden(garden.id)?.id).toBe(firstRead?.id);
+    const active = seasons.getActiveForGarden(garden.id);
+    expect(active?.year).toBe(2027);
+    expect(seasons.getActiveForGarden(garden.id)?.id).toBe(active?.id);
+  });
+
+  test('rejects duplicate season year for same garden', async () => {
+    const db = await openTestDb();
+    const { garden } = bootstrapGardenWithSeason(db, { gardenName: 'Seasons', year: 2026 });
+    const seasons = new SeasonRepository(db);
+    expect(() =>
+      seasons.create({ gardenId: garden.id, year: 2026, title: 'Duplicate' })
+    ).toThrow();
   });
 
   test('rejects cross-garden planting links on create and update', async () => {

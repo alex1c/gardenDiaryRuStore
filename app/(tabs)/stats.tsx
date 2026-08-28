@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import { useMemo } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
+import { SeasonBrowseBanner } from '@/src/components/season/SeasonBrowseBanner';
 import { Button } from '@/src/components/ui/Button';
 import { EmptyState } from '@/src/components/ui/EmptyState';
 import { Screen } from '@/src/components/ui/Screen';
@@ -100,6 +101,7 @@ export default function StatsScreen() {
 
   return (
     <Screen scroll>
+      <SeasonBrowseBanner />
       <Text style={styles.heading}>Статистика</Text>
       <Text style={styles.seasonLine}>
         {garden.name} · {season.title}

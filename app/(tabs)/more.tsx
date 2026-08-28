@@ -3,6 +3,7 @@
  */
 
 import { useState } from 'react';
+import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/src/components/ui/Button';
@@ -19,6 +20,7 @@ import { parseNotificationTime } from '@/src/utils/dateFormatRu';
 const HOUR_OPTIONS = [7, 8, 9, 10, 11];
 
 export default function MoreScreen() {
+  const router = useRouter();
   const { settings, patchSettings } = useAppSettings();
   const [busy, setBusy] = useState(false);
 
@@ -59,6 +61,20 @@ export default function MoreScreen() {
           Локальное приложение без обязательной регистрации.
         </Text>
       </Card>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Сезоны</Text>
+        <Card style={styles.card}>
+          <Text style={styles.body}>
+            Завершите текущий сезон и начните новый без потери многолетников.
+          </Text>
+          <Button
+            title="Управление сезонами"
+            variant="secondary"
+            onPress={() => router.push('/season/index')}
+          />
+        </Card>
+      </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Напоминания</Text>

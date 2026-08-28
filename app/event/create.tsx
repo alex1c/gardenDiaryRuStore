@@ -26,7 +26,7 @@ export default function CreateEventScreen() {
     plantingId?: string;
   }>();
   const { db, bumpRefresh, eventRepository } = useDatabase();
-  const { loading, garden, season, areas, plantings, catalogById } = useGardenSnapshot();
+  const { loading, garden, activeSeason, areas, activePlantings, catalogById } = useGardenSnapshot();
   const [saving, setSaving] = useState(false);
   const [pendingPhotos, setPendingPhotos] = useState<PendingPhoto[]>([]);
 
@@ -35,14 +35,14 @@ export default function CreateEventScreen() {
   }, []);
 
   const handleSubmit = async (values: EventFormValues) => {
-    if (!eventRepository || !season || !garden || !db) {
+    if (!eventRepository || !activeSeason || !garden || !db) {
       return;
     }
 
     setSaving(true);
     try {
       const event = eventRepository.create({
-        seasonId: season.id,
+        seasonId: activeSeason.id,
         title: values.title,
         type: values.type,
         eventDate: values.eventDate,
@@ -57,7 +57,7 @@ export default function CreateEventScreen() {
           await saveGardenPhoto(db, {
             gardenId: garden.id,
             sourceUri: pending.sourceUri,
-            seasonId: season.id,
+            seasonId: activeSeason.id,
             areaId: values.areaId,
             plantingId: values.plantingId,
             eventId: event.id,
@@ -82,7 +82,7 @@ export default function CreateEventScreen() {
     }
   };
 
-  if (loading || !season || !garden) {
+  if (loading || !activeSeason || !garden) {
     return (
       <Screen>
         <View style={styles.center}>
@@ -97,7 +97,7 @@ export default function CreateEventScreen() {
       <Text style={styles.heading}>+ Запись</Text>
       <EventForm
         areas={areas}
-        plantings={plantings}
+        plantings={activePlantings}
         catalogById={catalogById}
         initialAreaId={params.areaId ?? null}
         initialPlantingId={params.plantingId ?? null}

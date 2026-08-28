@@ -88,6 +88,19 @@ export class SeasonRepository {
     }
   }
 
+  getByGardenAndYear(gardenId: string, year: number): Season | null {
+    try {
+      const row = this.db.getFirst<SeasonRow>(
+        `SELECT id, garden_id, year, title, start_date, end_date, archived, created_at, updated_at
+         FROM seasons WHERE garden_id = ? AND year = ?`,
+        [gardenId, year]
+      );
+      return row ? mapSeason(row) : null;
+    } catch (err) {
+      throw new StorageError('Failed to get season by garden and year', err);
+    }
+  }
+
   getById(id: string): Season | null {
     try {
       const row = this.db.getFirst<SeasonRow>(
