@@ -247,6 +247,36 @@ describe('Backup validation', () => {
       expect(result.code).toBe('unsupported_version');
     }
   });
+
+  test('rejects cross-garden relationships before restore', async () => {
+    const db = await openTestDb();
+    await seedRichFixture(db);
+    const other = bootstrapGardenWithSeason(db, { gardenName: 'Other', year: 2025 });
+    const otherArea = new GardenAreaRepository(db).create({
+      gardenId: other.garden.id,
+      name: 'Foreign area',
+      type: 'garden_bed',
+    });
+    const backup = await createBackupJson(db, createMemoryPhotoIo().reader);
+    backup.data.plantings[0].area_id = otherArea.id;
+
+    expect(validateBackupObject(backup).ok).toBe(false);
+  });
+
+  test('rejects malformed base64, unsafe extensions, and orphan photo payloads', async () => {
+    const db = await openTestDb();
+    await seedRichFixture(db);
+    const backup = await createBackupJson(db, createMemoryPhotoIo().reader);
+    const photoId = String(backup.data.gardenPhotos[0].id);
+
+    backup.data.photoFiles[photoId] = { extension: '../../db', base64: '***' };
+    expect(validateBackupObject(backup).ok).toBe(false);
+
+    backup.data.photoFiles = {
+      missingPhoto: { extension: '.jpg', base64: 'YWJj' },
+    };
+    expect(validateBackupObject(backup).ok).toBe(false);
+  });
 });
 
 describe('Backup restore', () => {
@@ -284,21 +314,82 @@ describe('Backup restore', () => {
   test('late restore failure rolls back original data', async () => {
     const db = await openTestDb();
     await seedRichFixture(db);
-    const before = readBackupTableSnapshot(db);
     const backup = await createBackupJson(db, createMemoryPhotoIo().reader);
+    const photoId = String(backup.data.gardenPhotos[0].id);
+    backup.data.photoFiles[photoId] = { extension: '.jpg', base64: 'YWJj' };
 
-    const other = bootstrapGardenWithSeason(db, { gardenName: 'Other', year: 2025 });
-    expect(other.garden.id).not.toBe(String(before.gardens[0]?.id));
+    bootstrapGardenWithSeason(db, { gardenName: 'Other', year: 2025 });
+    const originalAtRestore = readBackupTableSnapshot(db);
+    const io = createMemoryPhotoIo();
 
-    const failingDb = failOnSql(db, /INSERT INTO expenses/i);
+    const failingDb = failOnSql(db, /INSERT INTO app_settings/i);
     await expect(
-      restoreBackupV1(failingDb as unknown as SqlDatabase, backup, createMemoryPhotoIo().writer)
+      restoreBackupV1(failingDb as unknown as SqlDatabase, backup, io.writer)
     ).rejects.toThrow();
 
     const afterFailed = readBackupTableSnapshot(db);
-    expect(afterFailed.gardens.length).toBeGreaterThan(1);
-    expect(afterFailed.expenses).toEqual(before.expenses);
+    expect(afterFailed).toEqual(originalAtRestore);
+    expect(io.files.size).toBe(0);
     expect(db.getUserVersion()).toBe(4);
+  });
+
+  test('cleans already staged files if a later photo write fails', async () => {
+    const db = await openTestDb();
+    await seedRichFixture(db);
+    const original = readBackupTableSnapshot(db);
+    const backup = await createBackupJson(db, createMemoryPhotoIo().reader);
+    const first = backup.data.gardenPhotos[0]!;
+    const secondId = 'second-photo';
+    backup.data.gardenPhotos.push({ ...first, id: secondId });
+    backup.data.photoFiles[String(first.id)] = { extension: '.jpg', base64: 'YWJj' };
+    backup.data.photoFiles[secondId] = { extension: '.jpg', base64: 'ZGVm' };
+    const staged = new Set<string>();
+    let writes = 0;
+    const writer: BackupPhotoWriter = {
+      async writePhotoFile(photoId) {
+        writes += 1;
+        if (writes === 2) throw new Error('disk full');
+        const uri = `memory://staged/${photoId}`;
+        staged.add(uri);
+        return uri;
+      },
+      async deletePhotoFile(uri) {
+        staged.delete(uri);
+      },
+    };
+
+    await expect(restoreBackupV1(db, backup, writer)).rejects.toThrow();
+    expect(readBackupTableSnapshot(db)).toEqual(original);
+    expect(staged.size).toBe(0);
+  });
+
+  test('restore replaces rather than merges datasets', async () => {
+    const db = await openTestDb();
+    await seedRichFixture(db);
+    const backup = await createBackupJson(db, createMemoryPhotoIo().reader);
+    const other = bootstrapGardenWithSeason(db, { gardenName: 'A-only', year: 2025 });
+
+    await restoreBackupV1(db, backup, createMemoryPhotoIo().writer);
+
+    expect(db.getFirst('SELECT id FROM gardens WHERE id = ?', [other.garden.id])).toBeNull();
+    expect(db.getAll('PRAGMA foreign_key_check')).toHaveLength(0);
+  });
+
+  test('obsolete photo cleanup failure does not invalidate a successful restore', async () => {
+    const db = await openTestDb();
+    await seedRichFixture(db);
+    const backup = await createBackupJson(db, createMemoryPhotoIo().reader);
+    const writer: BackupPhotoWriter = {
+      async writePhotoFile() {
+        return 'memory://unused';
+      },
+      async deletePhotoFile() {
+        throw new Error('cleanup unavailable');
+      },
+    };
+
+    await expect(restoreBackupV1(db, backup, writer)).resolves.toBeUndefined();
+    expect(db.getAll('PRAGMA foreign_key_check')).toHaveLength(0);
   });
 });
 
@@ -317,6 +408,13 @@ describe('CSV export', () => {
     expect(escapeCsvField('line1\nline2')).toBe('"line1\nline2"');
     expect(buildCsvRow(['plain', 'a;b'])).toBe('plain;"a;b"');
     expect(withUtf8Bom('x').charCodeAt(0)).toBe(0xfeff);
+  });
+
+  test('neutralizes spreadsheet formulas in text fields only', () => {
+    expect(escapeCsvField('=HYPERLINK(A1)')).toBe("'=HYPERLINK(A1)");
+    expect(escapeCsvField('+SUM(1;2)')).toBe("\"'+SUM(1;2)\"");
+    expect(escapeCsvField('@cmd')).toBe("'@cmd");
+    expect(escapeCsvField(42)).toBe('42');
   });
 
   test('includes Russian text', async () => {

@@ -41,25 +41,62 @@ export async function restoreBackupV1(
   backup: GardenDiaryBackupV1,
   photoWriter: BackupPhotoWriter
 ): Promise<void> {
-  const stagedPhotos = await stagePhotoFiles(backup.data, photoWriter);
+  const stagedPhotos = new Map<string, StagedPhoto>();
+  const previousPhotoUris = db
+    .getAll<{ uri: string }>('SELECT uri FROM garden_photos')
+    .map((row) => row.uri);
 
   try {
+    await stagePhotoFiles(backup.data, photoWriter, stagedPhotos);
     db.withTransaction(() => {
       clearAllTables(db);
       insertAllData(db, backup.data, stagedPhotos);
+      const violations = db.getAll('PRAGMA foreign_key_check');
+      if (violations.length > 0) {
+        throw new StorageError('Restored data violates foreign key integrity');
+      }
     });
   } catch (err) {
     await rollbackStagedPhotos(stagedPhotos, photoWriter);
     throw new StorageError('Не удалось восстановить данные', err);
   }
+
+  await cleanupObsoletePhotos(
+    previousPhotoUris,
+    backup.data,
+    stagedPhotos,
+    photoWriter
+  );
+}
+
+async function cleanupObsoletePhotos(
+  previousUris: string[],
+  data: BackupTableSnapshot,
+  staged: Map<string, StagedPhoto>,
+  writer: BackupPhotoWriter
+): Promise<void> {
+  const referenced = new Set(
+    data.gardenPhotos.map((row) => {
+      const replacement = staged.get(String(row.id));
+      return replacement?.uri ?? String(row.uri);
+    })
+  );
+
+  for (const uri of previousUris) {
+    if (referenced.has(uri)) continue;
+    try {
+      await writer.deletePhotoFile(uri);
+    } catch {
+      // A valid restored DB takes precedence over reclaiming obsolete files.
+    }
+  }
 }
 
 async function stagePhotoFiles(
   data: BackupTableSnapshot,
-  writer: BackupPhotoWriter
-): Promise<Map<string, StagedPhoto>> {
-  const staged = new Map<string, StagedPhoto>();
-
+  writer: BackupPhotoWriter,
+  staged: Map<string, StagedPhoto>
+): Promise<void> {
   for (const row of data.gardenPhotos) {
     const photoId = String(row.id);
     const file = data.photoFiles[photoId];
@@ -69,8 +106,6 @@ async function stagePhotoFiles(
     const uri = await writer.writePhotoFile(photoId, file);
     staged.set(photoId, { photoId, uri });
   }
-
-  return staged;
 }
 
 async function rollbackStagedPhotos(
@@ -78,7 +113,11 @@ async function rollbackStagedPhotos(
   writer: BackupPhotoWriter
 ): Promise<void> {
   for (const item of staged.values()) {
-    await writer.deletePhotoFile(item.uri);
+    try {
+      await writer.deletePhotoFile(item.uri);
+    } catch {
+      // Cleanup is best-effort. Preserve the original restore error and DB.
+    }
   }
 }
 

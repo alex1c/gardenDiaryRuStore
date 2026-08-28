@@ -4,8 +4,10 @@
 
 import {
   EXPENSE_CATEGORIES,
+  GARDEN_AREA_TYPES,
   HARVEST_UNITS,
   PLANTING_STATUSES,
+  QUANTITY_UNITS,
   REPEAT_TYPES,
   WORK_TYPES,
 } from '@/src/domain/codes';
@@ -70,7 +72,11 @@ export function validateBackupObject(raw: unknown): ParsedBackup {
     return fail('wrong_format', 'Файл не является резервной копией «Моей дачи»');
   }
 
-  if (typeof obj.createdAt !== 'string' || !obj.createdAt) {
+  if (
+    typeof obj.createdAt !== 'string' ||
+    !obj.createdAt ||
+    !Number.isFinite(Date.parse(obj.createdAt))
+  ) {
     return fail('corrupted', 'Резервная копия повреждена');
   }
 
@@ -124,6 +130,13 @@ function validateEntities(backup: GardenDiaryBackupV1): string | null {
     expenses: collectIds(backup.data.expenses),
     photos: collectIds(backup.data.gardenPhotos),
   };
+  const seasons = rowsById(backup.data.seasons);
+  const areas = rowsById(backup.data.gardenAreas);
+  const catalog = rowsById(backup.data.plantCatalogItems);
+  const gardenPlants = rowsById(backup.data.gardenPlants);
+  const plantings = rowsById(backup.data.plantings);
+  const tasks = rowsById(backup.data.gardenTasks);
+  const events = rowsById(backup.data.gardenEvents);
 
   const seasonYearPairs = new Set<string>();
   for (const row of backup.data.seasons) {
@@ -153,7 +166,9 @@ function validateEntities(backup: GardenDiaryBackupV1): string | null {
       return 'Зона ссылается на отсутствующий участок';
     }
     reqString(row, 'name');
-    reqString(row, 'type');
+    assertEnum(row.type, GARDEN_AREA_TYPES, 'area type');
+    assertOptionalPositive(row.length);
+    assertOptionalPositive(row.width);
   }
 
   for (const row of backup.data.plantCatalogItems) {
@@ -164,7 +179,8 @@ function validateEntities(backup: GardenDiaryBackupV1): string | null {
   }
 
   for (const row of backup.data.gardenPlants) {
-    if (!ids.gardens.has(reqString(row, 'garden_id'))) {
+    const gardenId = reqString(row, 'garden_id');
+    if (!ids.gardens.has(gardenId)) {
       return 'Многолетник ссылается на отсутствующий участок';
     }
     if (!ids.catalog.has(reqString(row, 'catalog_item_id'))) {
@@ -173,7 +189,16 @@ function validateEntities(backup: GardenDiaryBackupV1): string | null {
     if (row.area_id != null && !ids.areas.has(String(row.area_id))) {
       return 'Многолетник ссылается на отсутствующую зону';
     }
+    if (String(catalog.get(String(row.catalog_item_id))?.garden_id) !== gardenId) {
+      return 'Многолетник и культура относятся к разным участкам';
+    }
+    if (row.area_id != null && String(areas.get(String(row.area_id))?.garden_id) !== gardenId) {
+      return 'Многолетник и зона относятся к разным участкам';
+    }
     assertEnum(row.status, PLANTING_STATUSES, 'status');
+    assertOptionalEnum(row.quantity_unit, QUANTITY_UNITS, 'quantity unit');
+    assertOptionalPositive(row.quantity);
+    assertOptionalLocalDate(row.planted_date);
   }
 
   const plantingPerennialKey = new Set<string>();
@@ -185,13 +210,23 @@ function validateEntities(backup: GardenDiaryBackupV1): string | null {
     if (!ids.catalog.has(reqString(row, 'catalog_item_id'))) {
       return 'Посадка ссылается на отсутствующую культуру';
     }
+    const gardenId = String(seasons.get(seasonId)?.garden_id);
+    if (String(catalog.get(String(row.catalog_item_id))?.garden_id) !== gardenId) {
+      return 'Посадка и культура относятся к разным участкам';
+    }
     if (row.area_id != null && !ids.areas.has(String(row.area_id))) {
       return 'Посадка ссылается на отсутствующую зону';
+    }
+    if (row.area_id != null && String(areas.get(String(row.area_id))?.garden_id) !== gardenId) {
+      return 'Посадка и зона относятся к разным участкам';
     }
     if (row.garden_plant_id != null) {
       const gp = String(row.garden_plant_id);
       if (!ids.gardenPlants.has(gp)) {
         return 'Посадка ссылается на отсутствующий многолетник';
+      }
+      if (String(gardenPlants.get(gp)?.garden_id) !== gardenId) {
+        return 'Посадка и многолетник относятся к разным участкам';
       }
       const key = `${seasonId}:${gp}`;
       if (plantingPerennialKey.has(key)) {
@@ -200,6 +235,7 @@ function validateEntities(backup: GardenDiaryBackupV1): string | null {
       plantingPerennialKey.add(key);
     }
     assertEnum(row.status, PLANTING_STATUSES, 'status');
+    assertOptionalEnum(row.quantity_unit, QUANTITY_UNITS, 'quantity unit');
     assertOptionalLocalDate(row.sowing_date);
     assertOptionalLocalDate(row.transplant_date);
     assertOptionalLocalDate(row.harvest_start_date);
@@ -207,13 +243,19 @@ function validateEntities(backup: GardenDiaryBackupV1): string | null {
   }
 
   for (const row of backup.data.gardenTasks) {
-    if (!ids.seasons.has(reqString(row, 'season_id'))) {
+    const seasonId = reqString(row, 'season_id');
+    if (!ids.seasons.has(seasonId)) {
       return 'Задача ссылается на отсутствующий сезон';
     }
     assertOptionalFk(row.area_id, ids.areas);
     assertOptionalFk(row.planting_id, ids.plantings);
     assertOptionalFk(row.completion_event_id, ids.events);
     assertOptionalFk(row.spawned_task_id, ids.tasks);
+    const gardenId = String(seasons.get(seasonId)?.garden_id);
+    if (!optionalRefBelongsToGarden(row.area_id, areas, gardenId)) return 'Задача и зона относятся к разным участкам';
+    if (!optionalSeasonRefMatches(row.planting_id, plantings, seasonId)) return 'Задача и посадка относятся к разным сезонам';
+    if (!optionalSeasonRefMatches(row.spawned_task_id, tasks, seasonId)) return 'Связанные задачи относятся к разным сезонам';
+    if (!optionalSeasonRefMatches(row.completion_event_id, events, seasonId)) return 'Задача и запись относятся к разным сезонам';
     assertEnum(row.type, WORK_TYPES, 'type');
     assertEnum(row.repeat_type, REPEAT_TYPES, 'repeat_type');
     reqString(row, 'title');
@@ -221,36 +263,48 @@ function validateEntities(backup: GardenDiaryBackupV1): string | null {
   }
 
   for (const row of backup.data.gardenEvents) {
-    if (!ids.seasons.has(reqString(row, 'season_id'))) {
+    const seasonId = reqString(row, 'season_id');
+    if (!ids.seasons.has(seasonId)) {
       return 'Запись ссылается на отсутствующий сезон';
     }
     assertOptionalFk(row.area_id, ids.areas);
     assertOptionalFk(row.planting_id, ids.plantings);
     assertOptionalFk(row.task_id, ids.tasks);
+    const gardenId = String(seasons.get(seasonId)?.garden_id);
+    if (!optionalRefBelongsToGarden(row.area_id, areas, gardenId)) return 'Запись и зона относятся к разным участкам';
+    if (!optionalSeasonRefMatches(row.planting_id, plantings, seasonId)) return 'Запись и посадка относятся к разным сезонам';
+    if (!optionalSeasonRefMatches(row.task_id, tasks, seasonId)) return 'Запись и задача относятся к разным сезонам';
     assertEnum(row.type, WORK_TYPES, 'type');
     reqString(row, 'title');
     assertLocalDate(row.event_date, 'event_date');
   }
 
   for (const row of backup.data.harvests) {
-    if (!ids.seasons.has(reqString(row, 'season_id'))) {
+    const seasonId = reqString(row, 'season_id');
+    if (!ids.seasons.has(seasonId)) {
       return 'Урожай ссылается на отсутствующий сезон';
     }
     if (!ids.plantings.has(reqString(row, 'planting_id'))) {
       return 'Урожай ссылается на отсутствующую посадку';
     }
     assertOptionalFk(row.event_id, ids.events);
+    if (!optionalSeasonRefMatches(row.planting_id, plantings, seasonId)) return 'Урожай и посадка относятся к разным сезонам';
+    if (!optionalSeasonRefMatches(row.event_id, events, seasonId)) return 'Урожай и запись относятся к разным сезонам';
     assertLocalDate(row.date, 'date');
     assertPositiveNumber(row.quantity, 'quantity');
     assertEnum(row.unit, HARVEST_UNITS, 'unit');
   }
 
   for (const row of backup.data.expenses) {
-    if (!ids.seasons.has(reqString(row, 'season_id'))) {
+    const seasonId = reqString(row, 'season_id');
+    if (!ids.seasons.has(seasonId)) {
       return 'Расход ссылается на отсутствующий сезон';
     }
     assertOptionalFk(row.area_id, ids.areas);
     assertOptionalFk(row.planting_id, ids.plantings);
+    const gardenId = String(seasons.get(seasonId)?.garden_id);
+    if (!optionalRefBelongsToGarden(row.area_id, areas, gardenId)) return 'Расход и зона относятся к разным участкам';
+    if (!optionalSeasonRefMatches(row.planting_id, plantings, seasonId)) return 'Расход и посадка относятся к разным сезонам';
     assertLocalDate(row.date, 'date');
     assertEnum(row.category, EXPENSE_CATEGORIES, 'category');
     const kopecks = row.amount_kopecks;
@@ -270,6 +324,14 @@ function validateEntities(backup: GardenDiaryBackupV1): string | null {
     assertOptionalFk(row.area_id, ids.areas);
     assertOptionalFk(row.planting_id, ids.plantings);
     assertOptionalFk(row.event_id, ids.events);
+    const gardenId = reqString(row, 'garden_id');
+    const seasonId = row.season_id == null ? null : String(row.season_id);
+    if (seasonId && String(seasons.get(seasonId)?.garden_id) !== gardenId) return 'Фото и сезон относятся к разным участкам';
+    if (!optionalRefBelongsToGarden(row.area_id, areas, gardenId)) return 'Фото и зона относятся к разным участкам';
+    if (!optionalSeasonRefBelongsToGarden(row.planting_id, plantings, seasons, gardenId)) return 'Фото и посадка относятся к разным участкам';
+    if (!optionalSeasonRefBelongsToGarden(row.event_id, events, seasons, gardenId)) return 'Фото и запись относятся к разным участкам';
+    if (seasonId && !optionalSeasonRefMatches(row.planting_id, plantings, seasonId)) return 'Фото и посадка относятся к разным сезонам';
+    if (seasonId && !optionalSeasonRefMatches(row.event_id, events, seasonId)) return 'Фото и запись относятся к разным сезонам';
     reqString(row, 'uri');
     const file = backup.data.photoFiles[id];
     if (file) {
@@ -279,11 +341,20 @@ function validateEntities(backup: GardenDiaryBackupV1): string | null {
     }
   }
 
+  for (const [photoId, file] of Object.entries(backup.data.photoFiles)) {
+    if (!ids.photos.has(photoId) || !isValidPhotoFile(file)) {
+      return 'Повреждённый файл фото в резервной копии';
+    }
+  }
+
   for (const row of backup.data.appSettings) {
     reqString(row, 'key');
     if (typeof row.value !== 'string') {
       return 'Некорректные настройки приложения';
     }
+  }
+  if (new Set(backup.data.appSettings.map((row) => String(row.key))).size !== backup.data.appSettings.length) {
+    return 'Дублирующиеся настройки приложения';
   }
 
   const settings = readSettingsFromRows(backup.data.appSettings);
@@ -292,6 +363,13 @@ function validateEntities(backup: GardenDiaryBackupV1): string | null {
   }
   if (settings.activeGardenId && !ids.gardens.has(settings.activeGardenId)) {
     return 'activeGardenId ссылается на отсутствующий участок';
+  }
+  if (
+    settings.activeGardenId &&
+    settings.activeSeasonId &&
+    String(seasons.get(settings.activeSeasonId)?.garden_id) !== settings.activeGardenId
+  ) {
+    return 'Активный сезон относится к другому участку';
   }
 
   return null;
@@ -327,6 +405,58 @@ function collectIds(rows: Record<string, unknown>[]): Set<string> {
   return set;
 }
 
+function rowsById(
+  rows: Record<string, unknown>[]
+): Map<string, Record<string, unknown>> {
+  return new Map(rows.map((row) => [String(row.id), row]));
+}
+
+function optionalRefBelongsToGarden(
+  value: unknown,
+  rows: Map<string, Record<string, unknown>>,
+  gardenId: string
+): boolean {
+  if (value == null || value === '') return true;
+  return String(rows.get(String(value))?.garden_id) === gardenId;
+}
+
+function optionalSeasonRefMatches(
+  value: unknown,
+  rows: Map<string, Record<string, unknown>>,
+  seasonId: string
+): boolean {
+  if (value == null || value === '') return true;
+  return String(rows.get(String(value))?.season_id) === seasonId;
+}
+
+function optionalSeasonRefBelongsToGarden(
+  value: unknown,
+  rows: Map<string, Record<string, unknown>>,
+  seasons: Map<string, Record<string, unknown>>,
+  gardenId: string
+): boolean {
+  if (value == null || value === '') return true;
+  const seasonId = String(rows.get(String(value))?.season_id);
+  return String(seasons.get(seasonId)?.garden_id) === gardenId;
+}
+
+function isValidPhotoFile(value: unknown): boolean {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const file = value as Record<string, unknown>;
+  if (
+    typeof file.extension !== 'string' ||
+    !/^\.(?:jpe?g|png|webp|heic)$/i.test(file.extension) ||
+    typeof file.base64 !== 'string' ||
+    file.base64.length === 0 ||
+    file.base64.length % 4 !== 0
+  ) {
+    return false;
+  }
+  return /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(
+    file.base64
+  );
+}
+
 function reqString(row: Record<string, unknown>, key: string): string {
   const value = row[key];
   if (typeof value !== 'string' || !value) {
@@ -352,6 +482,15 @@ function assertEnum(
   if (typeof value !== 'string' || !allowed.includes(value)) {
     throw new Error(`Invalid ${label}`);
   }
+}
+
+function assertOptionalEnum(
+  value: unknown,
+  allowed: readonly string[],
+  label: string
+): void {
+  if (value == null || value === '') return;
+  assertEnum(value, allowed, label);
 }
 
 function assertLocalDate(value: unknown, label: string): void {

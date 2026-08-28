@@ -10,7 +10,12 @@ export function escapeCsvField(value: string | number | null | undefined): strin
   if (value === null || value === undefined) {
     return '';
   }
-  const text = String(value);
+  let text = String(value);
+  // Prevent spreadsheet applications from evaluating user-authored text as a
+  // formula. Numeric values arrive as numbers and are intentionally unchanged.
+  if (typeof value === 'string' && /^[=+\-@]/.test(text)) {
+    text = `'${text}`;
+  }
   if (
     text.includes('"') ||
     text.includes(SEPARATOR) ||

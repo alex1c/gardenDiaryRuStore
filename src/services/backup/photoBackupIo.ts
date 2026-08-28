@@ -10,6 +10,7 @@ import {
   ensureGardenPhotosDirectory,
   isOwnedGardenPhotoUri,
 } from '@/src/services/photoStorageService';
+import { createId } from '@/src/utils/id';
 
 import type { BackupPhotoFile, BackupPhotoReader, BackupPhotoWriter } from './backupTypes';
 
@@ -42,9 +43,12 @@ export function createExpoBackupPhotoReader(): BackupPhotoReader {
 /** Writes base64 photo payloads back into app-owned storage on restore. */
 export function createExpoBackupPhotoWriter(): BackupPhotoWriter {
   return {
-    async writePhotoFile(photoId: string, file: BackupPhotoFile): Promise<string> {
+    async writePhotoFile(_photoId: string, file: BackupPhotoFile): Promise<string> {
       const dir = await ensureGardenPhotosDirectory();
-      const destUri = `${dir}${photoId}${normalizeExtension(file.extension)}`;
+      // Never derive a path from untrusted backup IDs and never overwrite an
+      // existing photo. This unique app-owned path is safe to reference from
+      // the restored DB immediately; old files remain recoverable on failure.
+      const destUri = `${dir}restore-${createId()}${normalizeExtension(file.extension)}`;
       try {
         await FileSystem.writeAsStringAsync(destUri, file.base64, {
           encoding: FileSystem.EncodingType.Base64,
@@ -75,8 +79,10 @@ function inferExtension(uri: string): string {
 }
 
 function normalizeExtension(ext: string): string {
-  if (!ext.startsWith('.')) {
-    return `.${ext}`;
-  }
-  return ext;
+  const normalized = ext.toLowerCase().startsWith('.')
+    ? ext.toLowerCase()
+    : `.${ext.toLowerCase()}`;
+  return ['.jpg', '.jpeg', '.png', '.webp', '.heic'].includes(normalized)
+    ? normalized
+    : '.jpg';
 }

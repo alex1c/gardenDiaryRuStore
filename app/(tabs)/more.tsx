@@ -2,7 +2,7 @@
  * Ещё — app identity and reminder settings.
  */
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -13,6 +13,7 @@ import { Screen } from '@/src/components/ui/Screen';
 import { useAppSettings } from '@/src/hooks/useAppSettings';
 import { useDatabase } from '@/src/providers/DatabaseProvider';
 import { useSeasonContext } from '@/src/providers/SeasonProvider';
+import { SettingsRepository } from '@/src/repositories/SettingsRepository';
 import { pickBackupJsonFile, shareBackupJson, shareCsvExport } from '@/src/services/backup/backupFileService';
 import { createBackupJson } from '@/src/services/backup/createBackup';
 import {
@@ -41,6 +42,7 @@ export default function MoreScreen() {
   const [restorePreview, setRestorePreview] = useState<BackupPreview | null>(null);
   const [pendingRestore, setPendingRestore] = useState<GardenDiaryBackupV1 | null>(null);
   const [restoreOpen, setRestoreOpen] = useState(false);
+  const restoreInProgress = useRef(false);
 
   const { hour: currentHour } = parseNotificationTime(settings.notificationTime);
 
@@ -109,9 +111,10 @@ export default function MoreScreen() {
   };
 
   const handleConfirmRestore = async () => {
-    if (!db || !pendingRestore) {
+    if (!db || !pendingRestore || restoreInProgress.current) {
       return;
     }
+    restoreInProgress.current = true;
     setBusy(true);
     try {
       await restoreBackupV1(db, pendingRestore, createExpoBackupPhotoWriter());
@@ -121,10 +124,12 @@ export default function MoreScreen() {
       setRestoreOpen(false);
       setPendingRestore(null);
       setRestorePreview(null);
+      void syncDailyReminder(new SettingsRepository(db).getSettings()).catch(() => {});
       Alert.alert('Восстановление', 'Данные успешно восстановлены.');
     } catch {
       Alert.alert('Восстановление', 'Не удалось восстановить данные');
     } finally {
+      restoreInProgress.current = false;
       setBusy(false);
     }
   };
