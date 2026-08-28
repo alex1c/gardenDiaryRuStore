@@ -198,6 +198,10 @@ export type AppSettings = {
   themePreference: ThemePreference;
   activeGardenId: string | null;
   activeSeasonId: string | null;
+  /** Meaningful app foreground sessions — drives conservative interstitial policy. */
+  qualifyingSessionCount: number;
+  /** qualifyingSessionCount value when the last interstitial was shown. */
+  lastInterstitialSession: number;
 };
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
@@ -209,4 +213,6 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   themePreference: 'system',
   activeGardenId: null,
   activeSeasonId: null,
+  qualifyingSessionCount: 0,
+  lastInterstitialSession: 0,
 };

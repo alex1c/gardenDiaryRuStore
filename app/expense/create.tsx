@@ -13,6 +13,9 @@ import {
 import { Screen } from '@/src/components/ui/Screen';
 import { useGardenSnapshot } from '@/src/hooks/useGardenSnapshot';
 import { useDatabase } from '@/src/providers/DatabaseProvider';
+import { markMeaningfulActionCompleted } from '@/src/services/ads/adSession';
+import { trackAnalyticsEvent } from '@/src/services/analytics/analytics';
+import { ANALYTICS_EVENTS } from '@/src/services/analytics/events';
 
 export default function CreateExpenseScreen() {
   const router = useRouter();
@@ -41,6 +44,10 @@ export default function CreateExpenseScreen() {
         notes: values.notes,
       });
       bumpRefresh();
+      trackAnalyticsEvent(ANALYTICS_EVENTS.EXPENSE_ADDED, {
+        expense_category: values.category,
+      });
+      markMeaningfulActionCompleted();
       router.back();
     } finally {
       setSaving(false);

@@ -26,6 +26,8 @@ const KEYS = {
   themePreference: 'themePreference',
   activeGardenId: 'activeGardenId',
   activeSeasonId: 'activeSeasonId',
+  qualifyingSessionCount: 'qualifyingSessionCount',
+  lastInterstitialSession: 'lastInterstitialSession',
 } as const;
 
 export class SettingsRepository {
@@ -71,6 +73,14 @@ export class SettingsRepository {
           map.get(KEYS.activeSeasonId),
           DEFAULT_APP_SETTINGS.activeSeasonId
         ),
+        qualifyingSessionCount: readNumber(
+          map.get(KEYS.qualifyingSessionCount),
+          DEFAULT_APP_SETTINGS.qualifyingSessionCount
+        ),
+        lastInterstitialSession: readNumber(
+          map.get(KEYS.lastInterstitialSession),
+          DEFAULT_APP_SETTINGS.lastInterstitialSession
+        ),
       };
     } catch (err) {
       throw new StorageError('Failed to load app settings', err);
@@ -105,6 +115,16 @@ export class SettingsRepository {
       this.upsert(KEYS.themePreference, settings.themePreference, now);
       this.upsert(KEYS.activeGardenId, settings.activeGardenId ?? '', now);
       this.upsert(KEYS.activeSeasonId, settings.activeSeasonId ?? '', now);
+      this.upsert(
+        KEYS.qualifyingSessionCount,
+        String(settings.qualifyingSessionCount),
+        now
+      );
+      this.upsert(
+        KEYS.lastInterstitialSession,
+        String(settings.lastInterstitialSession),
+        now
+      );
     } catch (err) {
       if (err instanceof StorageError) throw err;
       throw new StorageError('Failed to save app settings', err);

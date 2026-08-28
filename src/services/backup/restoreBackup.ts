@@ -10,6 +10,7 @@ import type {
   BackupTableSnapshot,
   GardenDiaryBackupV1,
 } from './backupTypes';
+import { normalizeAppSettingsRowsForRestore } from './adSettingsNormalization';
 
 /** Child-first delete order respecting FK dependencies. */
 const CLEAR_TABLES = [
@@ -300,7 +301,12 @@ function insertAllData(
     'created_at',
   ]);
 
-  insertRows(db, 'app_settings', data.appSettings, ['key', 'value', 'updated_at']);
+  insertRows(
+    db,
+    'app_settings',
+    normalizeAppSettingsRowsForRestore(data.appSettings),
+    ['key', 'value', 'updated_at']
+  );
 }
 
 function insertRows(

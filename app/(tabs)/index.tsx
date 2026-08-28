@@ -13,15 +13,20 @@ import {
 
 import { CompletedTaskRow, TaskCard } from '@/src/components/task/TaskCard';
 import { UndoBanner } from '@/src/components/task/UndoBanner';
+import { GardenBannerAd } from '@/src/components/ads/GardenBannerAd';
 import { Button } from '@/src/components/ui/Button';
 import { EmptyState } from '@/src/components/ui/EmptyState';
 import { Screen } from '@/src/components/ui/Screen';
 import { useGardenSnapshot } from '@/src/hooks/useGardenSnapshot';
+import { useSafeInterstitialOnFocus } from '@/src/hooks/useSafeInterstitialOnFocus';
 import { useTodayTasks } from '@/src/hooks/useTodayTasks';
 import { useDatabase } from '@/src/providers/DatabaseProvider';
 import { formatTaskTitle } from '@/src/services/taskDisplay';
 import { HarvestStatsService } from '@/src/services/harvestStatsService';
 import { completeTask, undoCompleteTask } from '@/src/services/taskCompletionService';
+import { markMeaningfulActionCompleted } from '@/src/services/ads/adSession';
+import { trackAnalyticsEvent } from '@/src/services/analytics/analytics';
+import { ANALYTICS_EVENTS } from '@/src/services/analytics/events';
 import { syncDailyReminder } from '@/src/services/notificationScheduler';
 import { colors, spacing, typography } from '@/src/theme/tokens';
 import { formatLocalDateLong, formatLocalDateShort } from '@/src/utils/dateFormatRu';
@@ -30,6 +35,7 @@ import { addDaysToLocalDate } from '@/src/utils/localDate';
 export default function TodayScreen() {
   const router = useRouter();
   const { db, bumpRefresh, taskRepository, settingsRepository, refreshToken } = useDatabase();
+  useSafeInterstitialOnFocus();
   const { loading: gardenLoading, garden, activeSeason, activePlantings, areas, catalogById } =
     useGardenSnapshot();
   const {
@@ -69,9 +75,15 @@ export default function TodayScreen() {
       if (!db || !settingsRepository) {
         return;
       }
-      completeTask(db, taskId, today);
+      const result = completeTask(db, taskId, today);
       bumpRefresh();
       await syncDailyReminder(settingsRepository.getSettings());
+      if (result.created) {
+        trackAnalyticsEvent(ANALYTICS_EVENTS.TASK_COMPLETED, {
+          task_type: result.task.type,
+        });
+        markMeaningfulActionCompleted();
+      }
       setUndoTaskId(taskId);
       setShowUndo(true);
     },
@@ -275,6 +287,8 @@ export default function TodayScreen() {
         onUndo={handleUndo}
         onDismiss={() => setShowUndo(false)}
       />
+
+      <GardenBannerAd placement="today" />
     </Screen>
   );
 }

@@ -15,6 +15,9 @@ import { useGardenSnapshot } from '@/src/hooks/useGardenSnapshot';
 import { useDatabase } from '@/src/providers/DatabaseProvider';
 import { resolveCatalogItemForPlanting } from '@/src/services/plantCatalogService';
 import { createPlantingWithOptionalPerennial } from '@/src/services/plantingService';
+import { markMeaningfulActionCompleted } from '@/src/services/ads/adSession';
+import { trackAnalyticsEvent } from '@/src/services/analytics/analytics';
+import { ANALYTICS_EVENTS } from '@/src/services/analytics/events';
 import { colors, typography } from '@/src/theme/tokens';
 
 export default function CreatePlantingScreen() {
@@ -98,6 +101,12 @@ export default function CreatePlantingScreen() {
       }
 
       bumpRefresh();
+      trackAnalyticsEvent(ANALYTICS_EVENTS.PLANTING_CREATED, {
+        planting_status: values.status,
+        is_perennial: values.isPerennial,
+        copied_from_previous: Boolean(copyFrom),
+      });
+      markMeaningfulActionCompleted();
       router.back();
     } finally {
       setSaving(false);

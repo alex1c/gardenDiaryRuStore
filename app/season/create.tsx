@@ -19,6 +19,9 @@ import { TextField } from '@/src/components/ui/TextField';
 import { useGardenSnapshot } from '@/src/hooks/useGardenSnapshot';
 import { useDatabase } from '@/src/providers/DatabaseProvider';
 import { useSeasonContext } from '@/src/providers/SeasonProvider';
+import { markMeaningfulActionCompleted } from '@/src/services/ads/adSession';
+import { trackAnalyticsEvent } from '@/src/services/analytics/analytics';
+import { ANALYTICS_EVENTS } from '@/src/services/analytics/events';
 import { createSeasonWithOptions } from '@/src/services/seasonCloneService';
 import { colors, radii, spacing, typography } from '@/src/theme/tokens';
 
@@ -86,6 +89,12 @@ export default function CreateSeasonScreen() {
         setActiveSeasonId(result.season.id);
       }
       bumpRefresh();
+      trackAnalyticsEvent(ANALYTICS_EVENTS.SEASON_CREATED, {
+        season_creation_mode:
+          startMode === 'fromPrevious' && sourceSeason ? 'clone' : 'empty',
+        copied_from_previous: startMode === 'fromPrevious',
+      });
+      markMeaningfulActionCompleted();
       router.back();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));

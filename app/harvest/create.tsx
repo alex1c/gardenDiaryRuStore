@@ -14,6 +14,9 @@ import { EmptyState } from '@/src/components/ui/EmptyState';
 import { Screen } from '@/src/components/ui/Screen';
 import { useGardenSnapshot } from '@/src/hooks/useGardenSnapshot';
 import { useDatabase } from '@/src/providers/DatabaseProvider';
+import { markMeaningfulActionCompleted } from '@/src/services/ads/adSession';
+import { trackAnalyticsEvent } from '@/src/services/analytics/analytics';
+import { ANALYTICS_EVENTS } from '@/src/services/analytics/events';
 import { createHarvest } from '@/src/services/harvestService';
 
 export default function CreateHarvestScreen() {
@@ -39,6 +42,10 @@ export default function CreateHarvestScreen() {
         notes: values.notes,
       });
       bumpRefresh();
+      trackAnalyticsEvent(ANALYTICS_EVENTS.HARVEST_ADDED, {
+        harvest_unit: values.unit,
+      });
+      markMeaningfulActionCompleted();
       router.back();
     } finally {
       setSaving(false);

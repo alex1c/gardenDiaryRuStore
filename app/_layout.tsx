@@ -10,6 +10,7 @@ import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
 import { DatabaseProvider, useDatabase } from '@/src/providers/DatabaseProvider';
+import { MonetizationProvider } from '@/src/providers/MonetizationProvider';
 import { SeasonProvider } from '@/src/providers/SeasonProvider';
 import { configureNotificationHandler } from '@/src/services/notificationScheduler';
 import { colors, spacing, typography } from '@/src/theme/tokens';
@@ -27,7 +28,9 @@ export default function RootLayout() {
   return (
     <DatabaseProvider>
       <SeasonProvider>
-        <RootNavigator />
+        <MonetizationProvider>
+          <RootNavigator />
+        </MonetizationProvider>
       </SeasonProvider>
     </DatabaseProvider>
   );

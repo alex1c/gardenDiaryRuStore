@@ -11,6 +11,9 @@ import { Button } from '@/src/components/ui/Button';
 import { Screen } from '@/src/components/ui/Screen';
 import { useGardenSnapshot } from '@/src/hooks/useGardenSnapshot';
 import { useDatabase } from '@/src/providers/DatabaseProvider';
+import { markMeaningfulActionCompleted } from '@/src/services/ads/adSession';
+import { trackAnalyticsEvent } from '@/src/services/analytics/analytics';
+import { ANALYTICS_EVENTS } from '@/src/services/analytics/events';
 import {
   requestNotificationPermission,
   syncDailyReminder,
@@ -46,6 +49,11 @@ export default function CreateTaskScreen() {
           notes: values.notes,
         });
         bumpRefresh();
+        trackAnalyticsEvent(ANALYTICS_EVENTS.TASK_CREATED, {
+          task_type: values.type,
+          repeat_type: values.repeatType,
+        });
+        markMeaningfulActionCompleted();
 
         const settings = settingsRepository.getSettings();
         await syncDailyReminder(settings);

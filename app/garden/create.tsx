@@ -10,7 +10,10 @@ import { Button } from '@/src/components/ui/Button';
 import { Screen } from '@/src/components/ui/Screen';
 import { TextField } from '@/src/components/ui/TextField';
 import { useDatabase } from '@/src/providers/DatabaseProvider';
+import { markMeaningfulActionCompleted } from '@/src/services/ads/adSession';
 import { bootstrapGardenWithSeason } from '@/src/services/bootstrapGarden';
+import { trackAnalyticsEvent } from '@/src/services/analytics/analytics';
+import { ANALYTICS_EVENTS } from '@/src/services/analytics/events';
 import { colors, spacing, typography } from '@/src/theme/tokens';
 
 const DEFAULT_NAME = 'Моя дача';
@@ -40,6 +43,8 @@ export default function CreateGardenScreen() {
     try {
       bootstrapGardenWithSeason(db, { gardenName: trimmed });
       bumpRefresh();
+      trackAnalyticsEvent(ANALYTICS_EVENTS.GARDEN_CREATED);
+      markMeaningfulActionCompleted();
       router.back();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));

@@ -2,10 +2,11 @@
  * Statistics tab — season harvest and expense summaries.
  */
 
-import { useRouter } from 'expo-router';
-import { useMemo } from 'react';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { useCallback, useMemo } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
+import { GardenBannerAd } from '@/src/components/ads/GardenBannerAd';
 import { SeasonBrowseBanner } from '@/src/components/season/SeasonBrowseBanner';
 import { Button } from '@/src/components/ui/Button';
 import { EmptyState } from '@/src/components/ui/EmptyState';
@@ -14,12 +15,20 @@ import { useGardenSnapshot } from '@/src/hooks/useGardenSnapshot';
 import { useDatabase } from '@/src/providers/DatabaseProvider';
 import { ExpenseStatsService } from '@/src/services/expenseStatsService';
 import { HarvestStatsService } from '@/src/services/harvestStatsService';
+import { trackAnalyticsEvent } from '@/src/services/analytics/analytics';
+import { ANALYTICS_EVENTS } from '@/src/services/analytics/events';
 import { colors, spacing, typography } from '@/src/theme/tokens';
 
 export default function StatsScreen() {
   const router = useRouter();
   const { db, refreshToken } = useDatabase();
   const { loading, garden, season } = useGardenSnapshot();
+
+  useFocusEffect(
+    useCallback(() => {
+      trackAnalyticsEvent(ANALYTICS_EVENTS.STATS_OPENED);
+    }, [])
+  );
 
   const stats = useMemo(() => {
     if (!db || !season) {
@@ -281,6 +290,8 @@ export default function StatsScreen() {
           onPress={() => router.push('/expense/create')}
         />
       </View>
+
+      <GardenBannerAd placement="stats" />
     </Screen>
   );
 }

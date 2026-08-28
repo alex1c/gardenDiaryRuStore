@@ -24,6 +24,9 @@ import { restoreBackupV1 } from '@/src/services/backup/restoreBackup';
 import { parseAndValidateBackupJson } from '@/src/services/backup/validateBackup';
 import type { BackupPreview, GardenDiaryBackupV1 } from '@/src/services/backup/backupTypes';
 import { exportGardenCsv } from '@/src/services/export/exportData';
+import { markMeaningfulActionCompleted } from '@/src/services/ads/adSession';
+import { trackAnalyticsEvent } from '@/src/services/analytics/analytics';
+import { ANALYTICS_EVENTS } from '@/src/services/analytics/events';
 import {
   requestNotificationPermission,
   syncDailyReminder,
@@ -80,6 +83,9 @@ export default function MoreScreen() {
     try {
       const backup = await createBackupJson(db, createExpoBackupPhotoReader());
       await shareBackupJson(backup);
+      trackAnalyticsEvent(ANALYTICS_EVENTS.BACKUP_CREATED, {
+        backup_photo_mode: 'embedded',
+      });
       Alert.alert('Резервная копия', 'Файл готов к сохранению или отправке.');
     } catch {
       Alert.alert('Резервная копия', 'Не удалось создать резервную копию.');
@@ -125,6 +131,7 @@ export default function MoreScreen() {
       setPendingRestore(null);
       setRestorePreview(null);
       void syncDailyReminder(new SettingsRepository(db).getSettings()).catch(() => {});
+      trackAnalyticsEvent(ANALYTICS_EVENTS.RESTORE_COMPLETED);
       Alert.alert('Восстановление', 'Данные успешно восстановлены.');
     } catch {
       Alert.alert('Восстановление', 'Не удалось восстановить данные');
@@ -142,6 +149,8 @@ export default function MoreScreen() {
     try {
       const csv = exportGardenCsv(db);
       await shareCsvExport(csv);
+      trackAnalyticsEvent(ANALYTICS_EVENTS.CSV_EXPORTED);
+      markMeaningfulActionCompleted();
     } catch {
       Alert.alert('Экспорт CSV', 'Не удалось подготовить экспорт.');
     } finally {
