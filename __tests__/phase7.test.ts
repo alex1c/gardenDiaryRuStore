@@ -5,8 +5,10 @@
 import initSqlJs from 'sql.js';
 
 import { createDatabaseFromClient } from '@/src/db/database';
+import { runMigrations } from '@/src/db/migrate';
+import { MIGRATIONS } from '@/src/db/migrations';
 import { createSqlJsAdapter } from '@/src/db/sqlJsAdapter';
-import type { SqlDatabase } from '@/src/db/types';
+import type { SqlDatabase, SqlRunResult } from '@/src/db/types';
 import { GardenRepository } from '@/src/repositories/GardenRepository';
 import { GardenAreaRepository } from '@/src/repositories/GardenAreaRepository';
 import { GardenEventRepository } from '@/src/repositories/GardenEventRepository';
@@ -36,6 +38,44 @@ async function openTestDb(): Promise<SqlDatabase> {
   const SQL = await initSqlJs();
   const raw = new SQL.Database();
   return createDatabaseFromClient(createSqlJsAdapter(raw));
+}
+
+async function openSchemaV3Db(): Promise<SqlDatabase> {
+  const SQL = await initSqlJs();
+  const raw = new SQL.Database();
+  const db = createSqlJsAdapter(raw);
+  db.exec('PRAGMA foreign_keys = ON;');
+  runMigrations(db, MIGRATIONS.slice(0, 3));
+  return db;
+}
+
+function failOnSql(db: SqlDatabase, pattern: RegExp): SqlDatabase {
+  return {
+    exec(sql: string): void {
+      db.exec(sql);
+    },
+    run(sql: string, params?: unknown[]): SqlRunResult {
+      if (pattern.test(sql)) {
+        throw new Error('Simulated late clone failure');
+      }
+      return db.run(sql, params);
+    },
+    getAll<T>(sql: string, params?: unknown[]): T[] {
+      return db.getAll<T>(sql, params);
+    },
+    getFirst<T>(sql: string, params?: unknown[]): T | null {
+      return db.getFirst<T>(sql, params);
+    },
+    withTransaction<T>(fn: () => T): T {
+      return db.withTransaction(fn);
+    },
+    getUserVersion(): number {
+      return db.getUserVersion();
+    },
+    setUserVersion(version: number): void {
+      db.setUserVersion(version);
+    },
+  };
 }
 
 type Fixture = {
@@ -73,6 +113,94 @@ async function seed2026(): Promise<Fixture> {
     catalogId: tomato.id,
   };
 }
+
+describe('Migration v4', () => {
+  test('upgrades v3 without losing existing data', async () => {
+    const db = await openSchemaV3Db();
+    const { garden, season } = bootstrapGardenWithSeason(db, {
+      gardenName: 'Legacy garden',
+      year: 2026,
+    });
+    const catalog = new PlantCatalogRepository(db).create({
+      gardenId: garden.id,
+      speciesName: 'Tomato',
+    });
+    const plantingId = 'legacy-planting';
+    db.run(
+      `INSERT INTO plantings
+       (id, season_id, catalog_item_id, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [plantingId, season.id, catalog.id, 'growing', season.createdAt, season.updatedAt]
+    );
+
+    runMigrations(db);
+
+    expect(db.getUserVersion()).toBe(4);
+    expect(new GardenRepository(db).getById(garden.id)).not.toBeNull();
+    expect(new SeasonRepository(db).getById(season.id)).not.toBeNull();
+    expect(new PlantingRepository(db).getById(plantingId)?.gardenPlantId).toBeNull();
+  });
+
+  test('rolls back all v4 schema changes when the final unique index fails', async () => {
+    const db = await openSchemaV3Db();
+    const { garden, season } = bootstrapGardenWithSeason(db, {
+      gardenName: 'Legacy garden',
+      year: 2026,
+    });
+    db.run(
+      `INSERT INTO seasons
+       (id, garden_id, year, title, archived, created_at, updated_at)
+       VALUES (?, ?, ?, ?, 0, ?, ?)`,
+      ['duplicate-season', garden.id, season.year, 'Duplicate', season.createdAt, season.updatedAt]
+    );
+
+    expect(() => runMigrations(db)).toThrow(/Migration 4/);
+    expect(db.getUserVersion()).toBe(3);
+    expect(
+      db.getFirst<{ name: string }>(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'garden_plants'"
+      )
+    ).toBeNull();
+    expect(
+      db.getAll<{ name: string }>('PRAGMA table_info(plantings)')
+        .some((column) => column.name === 'garden_plant_id')
+    ).toBe(false);
+  });
+
+  test('allows annual NULLs and the same perennial in different seasons', async () => {
+    const { db, gardenId, season2026Id, catalogId } = await seed2026();
+    const plantings = new PlantingRepository(db);
+    plantings.create({ seasonId: season2026Id, catalogItemId: catalogId });
+    plantings.create({ seasonId: season2026Id, catalogItemId: catalogId });
+
+    const perennial = createPlantingWithOptionalPerennial(db, {
+      seasonId: season2026Id,
+      catalogItemId: catalogId,
+      isPerennial: true,
+    });
+    const next = new SeasonRepository(db).create({
+      gardenId,
+      year: 2027,
+      title: '2027',
+    });
+
+    expect(plantings.listBySeason(season2026Id)).toHaveLength(3);
+    expect(() =>
+      plantings.create({
+        seasonId: season2026Id,
+        catalogItemId: catalogId,
+        gardenPlantId: perennial.gardenPlantId,
+      })
+    ).toThrow();
+    expect(() =>
+      plantings.create({
+        seasonId: next.id,
+        catalogItemId: catalogId,
+        gardenPlantId: perennial.gardenPlantId,
+      })
+    ).not.toThrow();
+  });
+});
 
 describe('Season create and active selection', () => {
   test('creates season and sets active via settings', async () => {
@@ -260,7 +388,7 @@ describe('Season clone', () => {
     expect(plantings.listBySeason(first.season.id)).toHaveLength(1);
   });
 
-  test('rolls back when clone fails mid-transaction', async () => {
+  test('rolls back copied rows and settings on a late clone failure', async () => {
     const { db, gardenId, season2026Id, catalogId } = await seed2026();
     createPlantingWithOptionalPerennial(db, {
       seasonId: season2026Id,
@@ -269,28 +397,29 @@ describe('Season clone', () => {
       status: 'growing',
     });
 
-    const seasons = new SeasonRepository(db);
-    const originalCreate = seasons.create.bind(seasons);
-    let created = false;
-    jest.spyOn(seasons, 'create').mockImplementation((input) => {
-      created = true;
-      originalCreate(input);
-      throw new Error('Simulated clone failure');
+    new PlantingRepository(db).create({
+      seasonId: season2026Id,
+      catalogItemId: catalogId,
+      status: 'growing',
     });
+    const failingDb = failOnSql(db, /INSERT INTO app_settings/);
 
     expect(() =>
-      db.withTransaction(() => {
-        seasons.create({
-          gardenId,
-          year: 2027,
-          title: 'Сезон 2027',
-        });
+      createSeasonWithOptions(failingDb, {
+        gardenId,
+        year: 2027,
+        title: 'Season 2027',
+        sourceSeasonId: season2026Id,
+        copyPerennials: true,
+        copyAnnualPlantings: true,
       })
-    ).toThrow(/transaction failed|Simulated clone failure/);
+    ).toThrow(/Failed to save app settings/);
 
-    expect(created).toBe(true);
-    expect(seasons.getByGardenAndYear(gardenId, 2027)).toBeNull();
-    jest.restoreAllMocks();
+    expect(new SeasonRepository(db).getByGardenAndYear(gardenId, 2027)).toBeNull();
+    expect(new PlantingRepository(db).listBySeason(season2026Id)).toHaveLength(2);
+    expect(new SettingsRepository(db).getSettings().activeSeasonId).toBe(
+      season2026Id
+    );
   });
 });
 
@@ -320,6 +449,24 @@ describe('Areas and catalog on clone', () => {
 });
 
 describe('GardenPlant perennials', () => {
+  test('rejects invalid perennial values on update', async () => {
+    const { db, season2026Id, catalogId } = await seed2026();
+    const planting = createPlantingWithOptionalPerennial(db, {
+      seasonId: season2026Id,
+      catalogItemId: catalogId,
+      isPerennial: true,
+      quantity: 1,
+    });
+    const plants = new GardenPlantRepository(db);
+
+    expect(() => plants.update(planting.gardenPlantId!, { quantity: -1 })).toThrow(
+      /positive finite/
+    );
+    expect(() =>
+      plants.update(planting.gardenPlantId!, { plantedDate: '2026-02-30' })
+    ).toThrow(/Invalid local date/);
+  });
+
   test('creates garden plant and links planting', async () => {
     const { db, season2026Id, catalogId } = await seed2026();
     const planting = createPlantingWithOptionalPerennial(db, {

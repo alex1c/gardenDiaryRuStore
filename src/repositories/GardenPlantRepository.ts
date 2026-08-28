@@ -157,6 +157,9 @@ export class GardenPlantRepository {
     };
 
     assertStatus(next.status);
+    assertOptionalQuantityUnit(next.quantityUnit);
+    assertOptionalLocalDate(next.plantedDate);
+    assertOptionalPositiveFinite(next.quantity, 'Garden plant quantity');
     this.assertGardenConsistency(next.gardenId, next.catalogItemId, next.areaId);
 
     try {
