@@ -113,7 +113,15 @@ export default function DiaryScreen() {
   if (!season) {
     return (
       <Screen scroll>
-        <EmptyState title="Дневник" message="Активный сезон не найден." />
+        <EmptyState
+          title="Дневник"
+          message="Сначала создайте или активируйте сезон — записи привязаны к сезону."
+        >
+          <Button
+            title="Управление сезонами"
+            onPress={() => router.push('/season/index')}
+          />
+        </EmptyState>
       </Screen>
     );
   }

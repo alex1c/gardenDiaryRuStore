@@ -282,7 +282,7 @@ export function PlantingForm({
         <View style={styles.perennialText}>
           <Text style={styles.sectionLabel}>Многолетнее растение</Text>
           <Text style={styles.perennialHint}>
-            Сохраняет identity между сезонами (яблоня, смородина, клубника).
+            Сохранится для следующих сезонов (яблоня, смородина, клубника).
           </Text>
         </View>
         <Switch

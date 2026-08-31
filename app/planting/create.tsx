@@ -114,7 +114,7 @@ export default function CreatePlantingScreen() {
   };
 
   return (
-    <Screen scroll keyboardShouldPersistTaps="handled">
+    <Screen scroll keyboardAvoiding keyboardShouldPersistTaps="handled">
       <PlantingForm
         areas={areas}
         catalogItems={catalogItems}

@@ -65,7 +65,7 @@ export default function CreateExpenseScreen() {
   }
 
   return (
-    <Screen scroll keyboardShouldPersistTaps="handled">
+    <Screen scroll keyboardAvoiding keyboardShouldPersistTaps="handled">
       <Text style={styles.heading}>+ Расход</Text>
       <ExpenseForm
         areas={areas}

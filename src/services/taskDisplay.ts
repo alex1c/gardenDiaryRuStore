@@ -5,6 +5,8 @@
 import {
   WORK_TYPE_EMOJI,
   WORK_TYPE_LABELS,
+  REPEAT_TYPE_LABELS,
+  type RepeatType,
   type WorkType,
 } from '@/src/domain/codes';
 import type { GardenArea, GardenTask, PlantCatalogItem, Planting } from '@/src/domain/types';
@@ -77,4 +79,20 @@ export function formatTaskRelationLabel(
     catalogById
   );
   return subtitle ?? 'Привязка';
+}
+
+/** Returns a short repeat label for recurring tasks, or null for one-off tasks. */
+export function formatTaskRepeatLabel(
+  task: Pick<GardenTask, 'repeatType' | 'repeatInterval'>
+): string | null {
+  if (task.repeatType === 'none') {
+    return null;
+  }
+
+  if (task.repeatType === 'every_n_days' && task.repeatInterval) {
+    return `Каждые ${task.repeatInterval} дн.`;
+  }
+
+  const label = REPEAT_TYPE_LABELS[task.repeatType as RepeatType];
+  return label === 'Не повторять' ? null : label;
 }

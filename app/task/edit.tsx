@@ -98,7 +98,7 @@ export default function EditTaskScreen() {
   }
 
   return (
-    <Screen scroll keyboardShouldPersistTaps="handled">
+    <Screen scroll keyboardAvoiding keyboardShouldPersistTaps="handled">
       <Text style={styles.heading}>Изменить дело</Text>
       <TaskForm
         areas={areas}

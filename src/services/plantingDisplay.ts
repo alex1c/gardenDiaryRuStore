@@ -24,6 +24,17 @@ export function formatCatalogLabel(item: PlantCatalogItem): string {
   return item.speciesName;
 }
 
+/** Splits catalog into primary species line and optional variety subtitle. */
+export function formatCatalogLines(item: PlantCatalogItem): {
+  species: string;
+  variety: string | null;
+} {
+  return {
+    species: item.speciesName,
+    variety: item.varietyName,
+  };
+}
+
 /** Formats quantity with a Russian unit label, e.g. "24 кустов". */
 export function formatQuantityWithUnit(
   quantity: number | null,

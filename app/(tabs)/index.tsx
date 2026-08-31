@@ -14,6 +14,7 @@ import {
 import { CompletedTaskRow, TaskCard } from '@/src/components/task/TaskCard';
 import { UndoBanner } from '@/src/components/task/UndoBanner';
 import { GardenBannerAd } from '@/src/components/ads/GardenBannerAd';
+import { SeasonBrowseBanner } from '@/src/components/season/SeasonBrowseBanner';
 import { Button } from '@/src/components/ui/Button';
 import { EmptyState } from '@/src/components/ui/EmptyState';
 import { Screen } from '@/src/components/ui/Screen';
@@ -135,7 +136,7 @@ export default function TodayScreen() {
       <Screen scroll>
         <EmptyState
           title="Добро пожаловать"
-          message="Начните с вашего участка. Потом вы сможете добавить дела и посадки."
+          message="Добавьте первый участок, чтобы вести посадки, работы, урожай и расходы в одном месте."
         >
           <Button
             title="Создать участок"
@@ -151,14 +152,25 @@ export default function TodayScreen() {
       <Screen scroll>
         <EmptyState
           title="Нет активного сезона"
-          message="Создайте или активируйте сезон, чтобы планировать работы."
-        />
+          message="Создайте или выберите сезон, чтобы планировать работы и вести дневник."
+        >
+          <Button
+            title="Управление сезонами"
+            onPress={() => router.push('/season/index')}
+          />
+          <Button
+            title="Создать сезон"
+            variant="secondary"
+            onPress={() => router.push('/season/create')}
+          />
+        </EmptyState>
       </Screen>
     );
   }
 
   return (
-    <Screen scroll keyboardShouldPersistTaps="handled">
+    <Screen scroll keyboardShouldPersistTaps="handled" contentStyle={styles.scrollContent}>
+      <SeasonBrowseBanner />
       <Text style={styles.heading}>Сегодня</Text>
       <Text style={styles.dateLine}>{formatLocalDateLong(today)}</Text>
       <Text style={styles.sub}>
@@ -302,6 +314,9 @@ function formatUpcomingHeading(date: string, today: string): string {
 }
 
 const styles = StyleSheet.create({
+  scrollContent: {
+    paddingBottom: spacing.xxl + spacing.lg,
+  },
   center: {
     flex: 1,
     alignItems: 'center',

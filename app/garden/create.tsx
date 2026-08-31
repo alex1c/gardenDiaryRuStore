@@ -54,9 +54,10 @@ export default function CreateGardenScreen() {
   };
 
   return (
-    <Screen scroll>
+    <Screen scroll keyboardAvoiding>
       <Text style={styles.hint}>
-        Можно оставить название по умолчанию или изменить его.
+        Можно оставить название по умолчанию. После создания добавьте первую
+        зону — грядку, теплицу или другую часть участка.
       </Text>
       <TextField
         label="Название участка"

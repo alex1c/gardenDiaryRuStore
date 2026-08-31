@@ -225,6 +225,8 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
+    minHeight: 44,
+    justifyContent: 'center',
     maxWidth: '100%',
   },
   chipActive: {

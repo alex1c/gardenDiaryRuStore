@@ -186,7 +186,8 @@ export default function MoreScreen() {
         <Text style={styles.sectionTitle}>Данные</Text>
         <Card style={styles.card}>
           <Text style={styles.body}>
-            Сохраните данные участка, сезонов и дневника.
+            Сохраните данные участка, сезонов и дневника на устройстве.
+            Фотографии, добавленные через приложение, входят в резервную копию.
           </Text>
           <Button
             title="Создать резервную копию"
@@ -194,8 +195,8 @@ export default function MoreScreen() {
             disabled={busy}
             onPress={handleCreateBackup}
           />
-          <Text style={styles.body}>
-            Текущие данные будут заменены после подтверждения.
+          <Text style={styles.warn}>
+            Восстановление заменит текущие данные на содержимое файла.
           </Text>
           <Button
             title="Восстановить из копии"
@@ -203,7 +204,7 @@ export default function MoreScreen() {
             disabled={busy}
             onPress={handlePickRestore}
           />
-          <Text style={styles.body}>Для Excel и личного архива.</Text>
+          <Text style={styles.body}>Экспорт CSV — для Excel и личного архива.</Text>
           <Button
             title="Экспорт CSV"
             variant="secondary"
@@ -288,6 +289,11 @@ const styles = StyleSheet.create({
   body: {
     ...typography.body,
     color: colors.textSecondary,
+  },
+  warn: {
+    ...typography.caption,
+    color: colors.warning,
+    fontWeight: '600',
   },
   section: {
     marginTop: spacing.lg,

@@ -161,7 +161,7 @@ export default function EditEventScreen() {
   }
 
   return (
-    <Screen scroll keyboardShouldPersistTaps="handled">
+    <Screen scroll keyboardAvoiding keyboardShouldPersistTaps="handled">
       <Text style={styles.heading}>{readOnly ? 'Запись' : 'Изменить запись'}</Text>
 
       {photos.length > 0 ? (

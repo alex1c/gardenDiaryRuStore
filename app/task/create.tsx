@@ -106,7 +106,7 @@ export default function CreateTaskScreen() {
   }
 
   return (
-    <Screen scroll keyboardShouldPersistTaps="handled">
+    <Screen scroll keyboardAvoiding keyboardShouldPersistTaps="handled">
       <Text style={styles.heading}>+ Добавить дело</Text>
       <TaskForm
         areas={areas}

@@ -22,7 +22,7 @@ import { useDatabase } from '@/src/providers/DatabaseProvider';
 import { formatEventHeadline } from '@/src/services/eventDisplay';
 import {
   formatAreaDimensions,
-  formatCatalogLabel,
+  formatCatalogLines,
   formatQuantityWithUnit,
 } from '@/src/services/plantingDisplay';
 import { colors, spacing, typography } from '@/src/theme/tokens';
@@ -71,11 +71,6 @@ export default function AreaDetailScreen() {
 
       <View style={styles.toolbar}>
         <Button
-          title="Редактировать зону"
-          variant="secondary"
-          onPress={() => router.push({ pathname: '/area/edit', params: { id: area.id } })}
-        />
-        <Button
           title="+ Добавить культуру"
           onPress={() =>
             router.push({
@@ -84,36 +79,36 @@ export default function AreaDetailScreen() {
             })
           }
         />
-        <Button
-          title="+ Дело"
-          variant="secondary"
-          onPress={() =>
-            router.push({
-              pathname: '/task/create',
-              params: { areaId: area.id },
-            })
-          }
-        />
-        <Button
-          title="+ Запись"
-          variant="secondary"
-          onPress={() =>
-            router.push({
-              pathname: '/event/create',
-              params: { areaId: area.id },
-            })
-          }
-        />
-        <Button
-          title="+ Расход"
-          variant="secondary"
-          onPress={() =>
-            router.push({
-              pathname: '/expense/create',
-              params: { areaId: area.id },
-            })
-          }
-        />
+        <View style={styles.toolbarRow}>
+          <Button
+            title="Редактировать"
+            variant="secondary"
+            onPress={() => router.push({ pathname: '/area/edit', params: { id: area.id } })}
+            style={styles.toolbarBtn}
+          />
+          <Button
+            title="+ Дело"
+            variant="secondary"
+            onPress={() =>
+              router.push({
+                pathname: '/task/create',
+                params: { areaId: area.id },
+              })
+            }
+            style={styles.toolbarBtn}
+          />
+          <Button
+            title="+ Запись"
+            variant="secondary"
+            onPress={() =>
+              router.push({
+                pathname: '/event/create',
+                params: { areaId: area.id },
+              })
+            }
+            style={styles.toolbarBtn}
+          />
+        </View>
       </View>
 
       {recentEvents.length > 0 ? (
@@ -168,7 +163,7 @@ export default function AreaDetailScreen() {
         <View style={styles.list}>
           {plantings.map((planting) => {
             const catalog = catalogById.get(planting.catalogItemId);
-            const label = catalog ? formatCatalogLabel(catalog) : 'Посадка';
+            const lines = catalog ? formatCatalogLines(catalog) : null;
             const qty = formatQuantityWithUnit(
               planting.quantity,
               planting.quantityUnit
@@ -186,9 +181,14 @@ export default function AreaDetailScreen() {
                 }
               >
                 <Card style={styles.plantingCard}>
-                  <Text style={styles.plantingTitle} numberOfLines={2}>
-                    {label}
+                  <Text style={styles.plantingSpecies} numberOfLines={2}>
+                    {lines?.species ?? 'Посадка'}
                   </Text>
+                  {lines?.variety ? (
+                    <Text style={styles.plantingVariety} numberOfLines={2}>
+                      {lines.variety}
+                    </Text>
+                  ) : null}
                   {qty ? (
                     <Text style={styles.plantingMeta} numberOfLines={1}>
                       {qty}
@@ -197,6 +197,9 @@ export default function AreaDetailScreen() {
                   <Text style={styles.plantingStatus}>
                     {PLANTING_STATUS_LABELS[planting.status]}
                   </Text>
+                  {planting.gardenPlantId ? (
+                    <Text style={styles.perennialTag}>Многолетник</Text>
+                  ) : null}
                 </Card>
               </Pressable>
             );
@@ -206,7 +209,7 @@ export default function AreaDetailScreen() {
 
       {!season ? (
         <Text style={styles.warning}>
-          Активный сезон не найден — посадки могут быть недоступны.
+          Сначала выберите активный сезон, чтобы добавлять посадки.
         </Text>
       ) : null}
     </Screen>
@@ -243,24 +246,44 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     gap: spacing.sm,
   },
+  toolbarRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  toolbarBtn: {
+    flexGrow: 1,
+    flexBasis: '30%',
+  },
   list: {
     gap: spacing.sm,
   },
   plantingCard: {
     gap: spacing.xs,
   },
-  plantingTitle: {
+  plantingSpecies: {
     ...typography.subtitle,
     color: colors.text,
     flexShrink: 1,
   },
-  plantingMeta: {
+  plantingVariety: {
     ...typography.body,
     color: colors.textSecondary,
+    flexShrink: 1,
+  },
+  plantingMeta: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '600',
   },
   plantingStatus: {
     ...typography.caption,
     color: colors.textMuted,
+  },
+  perennialTag: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '600',
   },
   warning: {
     ...typography.caption,

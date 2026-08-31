@@ -74,7 +74,7 @@ export default function CreateHarvestScreen() {
   }
 
   return (
-    <Screen scroll keyboardShouldPersistTaps="handled">
+    <Screen scroll keyboardAvoiding keyboardShouldPersistTaps="handled">
       <Text style={styles.heading}>+ Урожай</Text>
       <HarvestForm
         plantings={activePlantings}

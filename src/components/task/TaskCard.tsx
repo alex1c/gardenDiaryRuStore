@@ -2,145 +2,205 @@
  * Active task card for the Today screen with complete / postpone / edit actions.
  */
 
-import React from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/src/components/ui/Button';
 import { Card } from '@/src/components/ui/Card';
 import type { GardenArea, GardenTask, PlantCatalogItem, Planting } from '@/src/domain/types';
 import {
-  formatTaskRelationSubtitle,
-  formatTaskTitle,
+	formatTaskRelationSubtitle,
+	formatTaskRepeatLabel,
+	formatTaskTitle,
+	formatWorkTypeLabel,
 } from '@/src/services/taskDisplay';
-import { colors, spacing, typography } from '@/src/theme/tokens';
-import { formatDueDateRelative } from '@/src/utils/dateFormatRu';
+import { colors, radii, spacing, typography } from '@/src/theme/tokens';
+import { formatDueDateRelative, formatLocalDateShort } from '@/src/utils/dateFormatRu';
+
+import { PostponeTaskModal } from './PostponeTaskModal';
 
 type TaskCardProps = {
-  task: GardenTask;
-  today: string;
-  areasById: Map<string, GardenArea>;
-  plantingsById: Map<string, Planting>;
-  catalogById: Map<string, PlantCatalogItem>;
-  onComplete: (taskId: string) => void;
-  onPostpone: (taskId: string, newDueDate: string) => void;
-  onEdit: (taskId: string) => void;
-  showDueLabel?: boolean;
+	task: GardenTask;
+	today: string;
+	areasById: Map<string, GardenArea>;
+	plantingsById: Map<string, Planting>;
+	catalogById: Map<string, PlantCatalogItem>;
+	onComplete: (taskId: string) => void;
+	onPostpone: (taskId: string, newDueDate: string) => void;
+	onEdit: (taskId: string) => void;
+	showDueLabel?: boolean;
 };
 
 export function TaskCard({
-  task,
-  today,
-  areasById,
-  plantingsById,
-  catalogById,
-  onComplete,
-  onPostpone,
-  onEdit,
-  showDueLabel = false,
+	task,
+	today,
+	areasById,
+	plantingsById,
+	catalogById,
+	onComplete,
+	onPostpone,
+	onEdit,
+	showDueLabel = false,
 }: TaskCardProps) {
-  const subtitle = formatTaskRelationSubtitle(
-    task,
-    areasById,
-    plantingsById,
-    catalogById
-  );
+	const [postponeOpen, setPostponeOpen] = useState(false);
+	const subtitle = formatTaskRelationSubtitle(
+		task,
+		areasById,
+		plantingsById,
+		catalogById
+	);
+	const repeatLabel = formatTaskRepeatLabel(task);
+	const isOverdue = task.dueDate < today;
+	const typeLabel = formatWorkTypeLabel(task.type);
 
-  const handlePostpone = () => {
-    Alert.alert('Перенести', 'Выберите новую дату', [
-      {
-        text: 'На завтра',
-        onPress: () => onPostpone(task.id, addDays(today, 1)),
-      },
-      {
-        text: '+3 дня',
-        onPress: () => onPostpone(task.id, addDays(today, 3)),
-      },
-      { text: 'Отмена', style: 'cancel' },
-    ]);
-  };
+	return (
+		<>
+			<Card style={[styles.card, isOverdue ? styles.cardOverdue : null]}>
+				<Pressable accessibilityRole="button" onPress={() => onEdit(task.id)}>
+					<View style={styles.headerRow}>
+						<Text style={styles.title}>{formatTaskTitle(task)}</Text>
+						{isOverdue ? (
+							<View style={styles.overdueBadge}>
+								<Text style={styles.overdueBadgeText}>Просрочено</Text>
+							</View>
+						) : null}
+					</View>
+					<Text style={styles.typeLine}>{typeLabel}</Text>
+					{subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+					{repeatLabel ? (
+						<Text style={styles.repeat}>↻ {repeatLabel}</Text>
+					) : null}
+					{showDueLabel || isOverdue ? (
+						<Text style={[styles.due, isOverdue ? styles.dueOverdue : null]}>
+							{formatDueDateRelative(task.dueDate, today)} ·{' '}
+							{formatLocalDateShort(task.dueDate)}
+						</Text>
+					) : null}
+				</Pressable>
+				<View style={styles.actions}>
+					<Button
+						title="Готово"
+						onPress={() => onComplete(task.id)}
+						style={styles.actionBtn}
+					/>
+					<Button
+						title="Перенести"
+						variant="secondary"
+						onPress={() => setPostponeOpen(true)}
+						style={styles.actionBtn}
+					/>
+					<Button
+						title="Изменить"
+						variant="ghost"
+						onPress={() => onEdit(task.id)}
+						style={styles.actionBtn}
+					/>
+				</View>
+			</Card>
 
-  const handleOverflow = () => {
-    Alert.alert(task.title, undefined, [
-      { text: 'Изменить', onPress: () => onEdit(task.id) },
-      { text: 'Перенести', onPress: handlePostpone },
-      { text: 'Отмена', style: 'cancel' },
-    ]);
-  };
-
-  return (
-    <Card style={styles.card}>
-      <Pressable accessibilityRole="button" onPress={() => onEdit(task.id)}>
-        <Text style={styles.title}>{formatTaskTitle(task)}</Text>
-        {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
-        {showDueLabel ? (
-          <Text style={styles.due}>{formatDueDateRelative(task.dueDate, today)}</Text>
-        ) : null}
-      </Pressable>
-      <View style={styles.actions}>
-        <Button title="✓ Выполнено" onPress={() => onComplete(task.id)} />
-        <Button title="Ещё" variant="secondary" onPress={handleOverflow} />
-      </View>
-    </Card>
-  );
+			<PostponeTaskModal
+				visible={postponeOpen}
+				today={today}
+				initialDate={task.dueDate}
+				onClose={() => setPostponeOpen(false)}
+				onConfirm={(newDueDate) => {
+					setPostponeOpen(false);
+					onPostpone(task.id, newDueDate);
+				}}
+			/>
+		</>
+	);
 }
 
 /** Compact row for tasks completed today. */
 export function CompletedTaskRow({
-  task,
-  onUndo,
+	task,
+	onUndo,
 }: {
-  task: GardenTask;
-  onUndo?: (taskId: string) => void;
+	task: GardenTask;
+	onUndo?: (taskId: string) => void;
 }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onUndo ? () => onUndo(task.id) : undefined}
-      style={styles.completedRow}
-    >
-      <Text style={styles.completedText}>✓ {formatTaskTitle(task)}</Text>
-    </Pressable>
-  );
-}
-
-function addDays(localDate: string, days: number): string {
-  const [y, m, d] = localDate.split('-').map(Number);
-  const date = new Date(y, m - 1, d);
-  date.setDate(date.getDate() + days);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+	return (
+		<Pressable
+			accessibilityRole="button"
+			onPress={onUndo ? () => onUndo(task.id) : undefined}
+			style={styles.completedRow}
+		>
+			<Text style={styles.completedText}>✓ {formatTaskTitle(task)}</Text>
+		</Pressable>
+	);
 }
 
 const styles = StyleSheet.create({
-  card: {
-    gap: spacing.sm,
-  },
-  title: {
-    ...typography.subtitle,
-    color: colors.text,
-  },
-  subtitle: {
-    ...typography.body,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-  },
-  due: {
-    ...typography.caption,
-    color: colors.warning,
-    marginTop: spacing.xs,
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    flexWrap: 'wrap',
-  },
-  completedRow: {
-    paddingVertical: spacing.xs,
-  },
-  completedText: {
-    ...typography.body,
-    color: colors.textSecondary,
-  },
+	card: {
+		gap: spacing.sm,
+	},
+	cardOverdue: {
+		borderColor: colors.warning,
+		backgroundColor: '#FFFAF5',
+	},
+	headerRow: {
+		flexDirection: 'row',
+		alignItems: 'flex-start',
+		justifyContent: 'space-between',
+		gap: spacing.sm,
+	},
+	title: {
+		...typography.subtitle,
+		color: colors.text,
+		flex: 1,
+	},
+	typeLine: {
+		...typography.caption,
+		color: colors.textMuted,
+		marginTop: spacing.xs,
+		fontWeight: '600',
+	},
+	subtitle: {
+		...typography.body,
+		color: colors.textSecondary,
+		marginTop: spacing.xs,
+	},
+	repeat: {
+		...typography.caption,
+		color: colors.primary,
+		marginTop: spacing.xs,
+	},
+	due: {
+		...typography.caption,
+		color: colors.textSecondary,
+		marginTop: spacing.xs,
+	},
+	dueOverdue: {
+		color: colors.warning,
+		fontWeight: '600',
+	},
+	overdueBadge: {
+		backgroundColor: '#FEE4D6',
+		borderRadius: radii.sm,
+		paddingHorizontal: spacing.sm,
+		paddingVertical: 2,
+	},
+	overdueBadgeText: {
+		...typography.caption,
+		color: colors.warning,
+		fontWeight: '700',
+	},
+	actions: {
+		flexDirection: 'row',
+		flexWrap: 'wrap',
+		gap: spacing.sm,
+	},
+	actionBtn: {
+		flexGrow: 1,
+		flexBasis: '30%',
+		minWidth: 96,
+	},
+	completedRow: {
+		paddingVertical: spacing.xs,
+	},
+	completedText: {
+		...typography.body,
+		color: colors.textMuted,
+	},
 });

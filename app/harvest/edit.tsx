@@ -85,7 +85,7 @@ export default function EditHarvestScreen() {
   }
 
   return (
-    <Screen scroll keyboardShouldPersistTaps="handled">
+    <Screen scroll keyboardAvoiding keyboardShouldPersistTaps="handled">
       <Text style={styles.heading}>Изменить урожай</Text>
       <HarvestForm
         plantings={plantings}

@@ -89,8 +89,8 @@ export default function StatsScreen() {
           {garden.name} · {season.title}
         </Text>
         <EmptyState
-          title="Пока нет данных"
-          message="Добавляйте урожай и расходы — здесь появятся сводки по сезону."
+          title="Сводки появятся позже"
+          message="Добавляйте урожай и расходы — здесь появятся итоги по сезону."
         >
           <View style={styles.emptyActions}>
             <Button

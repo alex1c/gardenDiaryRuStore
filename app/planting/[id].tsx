@@ -198,7 +198,7 @@ export default function PlantingDetailScreen() {
   const varietyLine = catalog.varietyName ?? null;
 
   return (
-    <Screen scroll keyboardShouldPersistTaps="handled">
+    <Screen scroll keyboardAvoiding keyboardShouldPersistTaps="handled">
       <Text style={styles.species}>{speciesLine}</Text>
       {varietyLine ? <Text style={styles.variety}>{varietyLine}</Text> : null}
       {area ? <Text style={styles.meta}>{area.name}</Text> : null}

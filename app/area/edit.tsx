@@ -59,7 +59,7 @@ export default function EditAreaScreen() {
   };
 
   return (
-    <Screen scroll keyboardShouldPersistTaps="handled">
+    <Screen scroll keyboardAvoiding keyboardShouldPersistTaps="handled">
       <AreaForm
         initial={area}
         submitLabel="Сохранить изменения"

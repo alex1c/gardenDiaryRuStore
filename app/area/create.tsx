@@ -46,7 +46,7 @@ export default function CreateAreaScreen() {
   };
 
   return (
-    <Screen scroll keyboardShouldPersistTaps="handled">
+    <Screen scroll keyboardAvoiding keyboardShouldPersistTaps="handled">
       <AreaForm
         submitLabel="Сохранить"
         onSubmit={handleSubmit}

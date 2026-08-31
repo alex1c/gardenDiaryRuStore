@@ -116,7 +116,7 @@ export default function CreateSeasonScreen() {
   const duplicateExists = seasonRepository?.getByGardenAndYear(garden.id, year);
 
   return (
-    <Screen scroll keyboardShouldPersistTaps="handled">
+    <Screen scroll keyboardAvoiding keyboardShouldPersistTaps="handled">
       <TextField
         label="Год"
         value={yearText}
@@ -165,14 +165,17 @@ export default function CreateSeasonScreen() {
       {startMode === 'fromPrevious' && sourceSeason ? (
         <View style={styles.checklist}>
           <Text style={styles.hint}>
-            Зоны участка и каталог культур доступны во всех сезонах автоматически.
+            Грядки, теплицы и список культур уже принадлежат участку и не
+            дублируются.
           </Text>
           <View style={styles.switchRow}>
             <Text style={styles.switchLabel}>Перенести многолетники</Text>
             <Switch value={copyPerennials} onValueChange={setCopyPerennials} />
           </View>
           <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>Скопировать активные посадки</Text>
+            <Text style={styles.switchLabel}>
+              Перенести однолетние посадки как план
+            </Text>
             <Switch value={copyAnnuals} onValueChange={setCopyAnnuals} />
           </View>
           <Text style={styles.hint}>
