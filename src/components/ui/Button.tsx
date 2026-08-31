@@ -43,6 +43,7 @@ export function Button({
       {...rest}
     >
       <Text
+        numberOfLines={1}
         style={[
           styles.label,
           variant === 'primary' ? styles.labelOnPrimary : styles.labelOnSurface,

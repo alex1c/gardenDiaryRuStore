@@ -77,24 +77,28 @@ export function TaskCard({
 						</Text>
 					) : null}
 				</Pressable>
+				{/* Primary full-width, then two equal secondary actions —
+				    avoids wrapping long Russian labels at 360/390dp. */}
 				<View style={styles.actions}>
 					<Button
 						title="Готово"
 						onPress={() => onComplete(task.id)}
-						style={styles.actionBtn}
+						style={styles.primaryAction}
 					/>
-					<Button
-						title="Перенести"
-						variant="secondary"
-						onPress={() => setPostponeOpen(true)}
-						style={styles.actionBtn}
-					/>
-					<Button
-						title="Изменить"
-						variant="ghost"
-						onPress={() => onEdit(task.id)}
-						style={styles.actionBtn}
-					/>
+					<View style={styles.secondaryActions}>
+						<Button
+							title="Перенести"
+							variant="secondary"
+							onPress={() => setPostponeOpen(true)}
+							style={styles.secondaryAction}
+						/>
+						<Button
+							title="Изменить"
+							variant="secondary"
+							onPress={() => onEdit(task.id)}
+							style={styles.secondaryAction}
+						/>
+					</View>
 				</View>
 			</Card>
 
@@ -187,14 +191,17 @@ const styles = StyleSheet.create({
 		fontWeight: '700',
 	},
 	actions: {
-		flexDirection: 'row',
-		flexWrap: 'wrap',
 		gap: spacing.sm,
 	},
-	actionBtn: {
-		flexGrow: 1,
-		flexBasis: '30%',
-		minWidth: 96,
+	primaryAction: {
+		alignSelf: 'stretch',
+	},
+	secondaryActions: {
+		flexDirection: 'row',
+		gap: spacing.sm,
+	},
+	secondaryAction: {
+		flex: 1,
 	},
 	completedRow: {
 		paddingVertical: spacing.xs,

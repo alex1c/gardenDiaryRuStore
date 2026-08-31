@@ -115,6 +115,11 @@ async function seedScreenshotFixture(db: SqlDatabase, photoUri: string | null) {
 		speciesName: 'Перец',
 		varietyName: 'Калифорнийское чудо',
 	});
+	const carrot = catalog.create({
+		gardenId: garden.id,
+		speciesName: 'Морковь',
+		varietyName: 'Нантская',
+	});
 
 	const plantings = new PlantingRepository(db);
 	const tomatoPlanting = plantings.create({
@@ -139,6 +144,15 @@ async function seedScreenshotFixture(db: SqlDatabase, photoUri: string | null) {
 		areaId: greenhouse.id,
 		status: 'growing',
 		quantity: 3,
+		quantityUnit: 'pcs',
+	});
+	// Fill Грядка 1 so the Plot screen shows useful content on all cards.
+	plantings.create({
+		seasonId: season2026.id,
+		catalogItemId: carrot.id,
+		areaId: bed1.id,
+		status: 'growing',
+		quantity: 40,
 		quantityUnit: 'pcs',
 	});
 	const strawberryPlanting = plantings.create({

@@ -111,39 +111,7 @@ export default function AreaDetailScreen() {
         </View>
       </View>
 
-      {recentEvents.length > 0 ? (
-        <View style={styles.historySection}>
-          <Text style={styles.sectionTitle}>Последние записи</Text>
-          {recentEvents.map((event) => (
-            <Pressable
-              key={event.id}
-              accessibilityRole="button"
-              onPress={() =>
-                router.push({ pathname: '/event/edit', params: { id: event.id } })
-              }
-            >
-              <Card style={styles.eventCard}>
-                <Text style={styles.eventDate}>
-                  {formatLocalDateShort(event.eventDate)}
-                </Text>
-                <Text style={styles.eventTitle}>{formatEventHeadline(event)}</Text>
-                <Text style={styles.eventBody}>{event.title}</Text>
-              </Card>
-            </Pressable>
-          ))}
-          <Button
-            title="Вся история"
-            variant="ghost"
-            onPress={() =>
-              router.push({
-                pathname: '/(tabs)/diary',
-                params: { areaId: area.id },
-              })
-            }
-          />
-        </View>
-      ) : null}
-
+      {/* Plantings first so the area screen (and store screenshots) lead with crops. */}
       {plantings.length === 0 ? (
         <EmptyState
           title="Пока пусто"
@@ -206,6 +174,39 @@ export default function AreaDetailScreen() {
           })}
         </View>
       )}
+
+      {recentEvents.length > 0 ? (
+        <View style={styles.historySection}>
+          <Text style={styles.sectionTitle}>Последние записи</Text>
+          {recentEvents.map((event) => (
+            <Pressable
+              key={event.id}
+              accessibilityRole="button"
+              onPress={() =>
+                router.push({ pathname: '/event/edit', params: { id: event.id } })
+              }
+            >
+              <Card style={styles.eventCard}>
+                <Text style={styles.eventDate}>
+                  {formatLocalDateShort(event.eventDate)}
+                </Text>
+                <Text style={styles.eventTitle}>{formatEventHeadline(event)}</Text>
+                <Text style={styles.eventBody}>{event.title}</Text>
+              </Card>
+            </Pressable>
+          ))}
+          <Button
+            title="Вся история"
+            variant="ghost"
+            onPress={() =>
+              router.push({
+                pathname: '/(tabs)/diary',
+                params: { areaId: area.id },
+              })
+            }
+          />
+        </View>
+      ) : null}
 
       {!season ? (
         <Text style={styles.warning}>
