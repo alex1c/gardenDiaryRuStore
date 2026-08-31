@@ -40,13 +40,14 @@ export function initializeAppMetrica(): void {
 	}
 
 	const mod = getAppMetricaModule();
-	if (!mod) {
+	const apiKey = getAppMetricaApiKey();
+	if (!mod || !apiKey) {
 		return;
 	}
 
 	try {
 		mod.activate({
-			apiKey: getAppMetricaApiKey(),
+			apiKey,
 			sessionTimeout: 300,
 			logs: __DEV__,
 			statisticsSending: true,
@@ -70,6 +71,9 @@ export type AnalyticsReporter = {
 export function createAppMetricaReporter(): AnalyticsReporter {
 	return {
 		reportEvent: (eventName, attributes) => {
+			if (!getAppMetricaApiKey()) {
+				return;
+			}
 			const mod = getAppMetricaModule();
 			if (!mod) {
 				return;

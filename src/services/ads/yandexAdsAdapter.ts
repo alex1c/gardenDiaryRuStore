@@ -61,6 +61,9 @@ export function createYandexInterstitialBridge(): InterstitialNativeBridge {
 	const adUnitId = getInterstitialAdUnitId();
 
 	const preload = async (): Promise<void> => {
+		if (!adUnitId) {
+			return;
+		}
 		const mod = getYandexAdsModule();
 		if (!mod || loading || ready) {
 			return;

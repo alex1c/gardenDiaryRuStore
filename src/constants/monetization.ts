@@ -43,8 +43,11 @@ export function isMonetizationProductionBuild(): boolean {
 }
 
 /** Resolves banner ad unit id for a screen placement. */
-export function getBannerAdUnitId(placement: BannerPlacement): string {
-	if (!isMonetizationProductionBuild()) {
+export function getBannerAdUnitId(
+	placement: BannerPlacement,
+	production = isMonetizationProductionBuild()
+): string {
+	if (!production) {
 		return YANDEX_DEMO_AD_UNITS.banner;
 	}
 
@@ -55,23 +58,29 @@ export function getBannerAdUnitId(placement: BannerPlacement): string {
 		return PRODUCTION_AD_UNITS.bannerStats;
 	}
 
-	// Fall back to Today block or demo when production ids are not configured yet.
-	return PRODUCTION_AD_UNITS.bannerToday || YANDEX_DEMO_AD_UNITS.banner;
+	// Never send production traffic to a demo unit. An empty id disables the slot.
+	return '';
 }
 
 /** Resolves interstitial ad unit id for the current build flavor. */
-export function getInterstitialAdUnitId(): string {
-	if (!isMonetizationProductionBuild()) {
+export function getInterstitialAdUnitId(
+	production = isMonetizationProductionBuild()
+): string {
+	if (!production) {
 		return YANDEX_DEMO_AD_UNITS.interstitial;
 	}
-	return PRODUCTION_AD_UNITS.interstitial || YANDEX_DEMO_AD_UNITS.interstitial;
+	// Never send production traffic to a demo unit. An empty id disables preload.
+	return PRODUCTION_AD_UNITS.interstitial;
 }
 
 /** Resolves AppMetrica API key for the current build flavor. */
-export function getAppMetricaApiKey(): string {
-	if (!isMonetizationProductionBuild()) {
+export function getAppMetricaApiKey(
+	production = isMonetizationProductionBuild()
+): string {
+	if (!production) {
 		// Demo key documented by AppMetrica for plugin smoke tests.
 		return '00000000-0000-0000-0000-000000000000';
 	}
-	return APPMETRICA_PRODUCTION_API_KEY || '00000000-0000-0000-0000-000000000000';
+	// An empty key disables AppMetrica in release builds.
+	return APPMETRICA_PRODUCTION_API_KEY;
 }

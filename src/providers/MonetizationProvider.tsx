@@ -64,12 +64,12 @@ export function MonetizationProvider({ children }: MonetizationProviderProps) {
 			const prev = appState.current;
 			appState.current = nextState;
 
-			if (prev.match(/inactive|background/) && nextState === 'active') {
+			if (prev === 'background' && nextState === 'active') {
 				countSessionIfNeeded();
 				return;
 			}
 
-			if (nextState === 'background' || nextState === 'inactive') {
+			if (nextState === 'background') {
 				onAppMovedToBackground();
 			}
 		});

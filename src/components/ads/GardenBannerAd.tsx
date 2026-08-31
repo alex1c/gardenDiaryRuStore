@@ -25,7 +25,7 @@ export function GardenBannerAd({ placement }: GardenBannerAdProps) {
 	}, []);
 
 	useEffect(() => {
-		if (!yandex || Platform.OS === 'web') {
+		if (!config.adUnitId || !yandex || Platform.OS === 'web') {
 			return;
 		}
 
@@ -45,9 +45,9 @@ export function GardenBannerAd({ placement }: GardenBannerAdProps) {
 		return () => {
 			cancelled = true;
 		};
-	}, [yandex]);
+	}, [config.adUnitId, yandex]);
 
-	if (!visible || !yandex || Platform.OS === 'web' || !bannerSize) {
+	if (!config.adUnitId || !visible || !yandex || Platform.OS === 'web' || !bannerSize) {
 		return null;
 	}
 

@@ -273,6 +273,13 @@ describe('Phase 9 — monetization config', () => {
 		expect(typeof getAppMetricaApiKey()).toBe('string');
 		expect(typeof getInterstitialAdUnitId()).toBe('string');
 	});
+
+	it('does not substitute demo identifiers in production', () => {
+		expect(getBannerAdUnitId('today', true)).toBe('');
+		expect(getBannerAdUnitId('stats', true)).toBe('');
+		expect(getInterstitialAdUnitId(true)).toBe('');
+		expect(getAppMetricaApiKey(true)).toBe('');
+	});
 });
 
 describe('Phase 9 — backup ad settings normalization', () => {
