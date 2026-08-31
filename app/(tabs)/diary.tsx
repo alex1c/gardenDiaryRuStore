@@ -119,7 +119,7 @@ export default function DiaryScreen() {
         >
           <Button
             title="Управление сезонами"
-            onPress={() => router.push('/season/index')}
+            onPress={() => router.push('/season')}
           />
         </EmptyState>
       </Screen>

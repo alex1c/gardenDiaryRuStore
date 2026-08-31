@@ -156,7 +156,7 @@ export default function TodayScreen() {
         >
           <Button
             title="Управление сезонами"
-            onPress={() => router.push('/season/index')}
+            onPress={() => router.push('/season')}
           />
           <Button
             title="Создать сезон"

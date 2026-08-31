@@ -177,7 +177,7 @@ export default function MoreScreen() {
           <Button
             title="Управление сезонами"
             variant="secondary"
-            onPress={() => router.push('/season/index')}
+            onPress={() => router.push('/season')}
           />
         </Card>
       </View>

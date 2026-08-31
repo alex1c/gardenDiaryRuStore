@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 
 import type { BannerPlacement } from '@/src/constants/monetization';
+import { hideBannersForStoreScreenshots } from '@/src/constants/screenshotMode';
 import { spacing } from '@/src/theme/tokens';
 import { getBannerPlacementConfig } from '@/src/services/ads/bannerConfig';
 import { getYandexAdsModule } from '@/src/services/ads/yandexAdsAdapter';
@@ -47,7 +48,14 @@ export function GardenBannerAd({ placement }: GardenBannerAdProps) {
 		};
 	}, [config.adUnitId, yandex]);
 
-	if (!config.adUnitId || !visible || !yandex || Platform.OS === 'web' || !bannerSize) {
+	if (
+		hideBannersForStoreScreenshots ||
+		!config.adUnitId ||
+		!visible ||
+		!yandex ||
+		Platform.OS === 'web' ||
+		!bannerSize
+	) {
 		return null;
 	}
 

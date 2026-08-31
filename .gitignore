@@ -54,3 +54,4 @@ tools/
 
 dist-smoke/
 release-artifacts/
+.tools/
