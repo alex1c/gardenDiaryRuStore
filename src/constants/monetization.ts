@@ -1,7 +1,6 @@
 /**
  * Central monetization configuration — ad unit IDs, AppMetrica key, session policy.
- * Debug builds always use Yandex demo ad units; production IDs are placeholders
- * until configured in the Yandex Advertising Network / AppMetrica console.
+ * Debug builds always use Yandex demo ad units; production IDs below are for release.
  */
 
 /** Minimum qualifying sessions before the first interstitial may appear. */
@@ -16,24 +15,22 @@ export const YANDEX_DEMO_AD_UNITS = {
 	interstitial: 'demo-interstitial-yandex',
 } as const;
 
-/**
- * Production ad unit IDs from Yandex Advertising Network.
- * Replace empty strings with real block IDs before store release.
- */
+/** Production ad unit IDs from Yandex Advertising Network (v1 release). */
 export const PRODUCTION_AD_UNITS = {
-	/** Banner on the Today tab. */
-	bannerToday: '',
-	/** Banner on the Statistics tab (may reuse Today block or use a separate one). */
-	bannerStats: '',
+	/** Banner on the Today tab — shared v1 block. */
+	bannerToday: 'R-M-19846495-1',
+	/** Banner on the Statistics tab — same block as Today in v1. */
+	bannerStats: 'R-M-19846495-1',
 	/** Full-screen interstitial block. */
-	interstitial: '',
+	interstitial: 'R-M-19846495-2',
 } as const;
 
 /**
  * AppMetrica API key — public SDK identifier, not a secret.
- * Replace the empty string with the production key from AppMetrica console.
+ * Configured for RuStore production release.
  */
-export const APPMETRICA_PRODUCTION_API_KEY = '';
+export const APPMETRICA_PRODUCTION_API_KEY =
+	'0dc64afa-6bda-4b04-824c-bf253829ebe6';
 
 export type BannerPlacement = 'today' | 'stats';
 
@@ -83,4 +80,29 @@ export function getAppMetricaApiKey(
 	}
 	// An empty key disables AppMetrica in release builds.
 	return APPMETRICA_PRODUCTION_API_KEY;
+}
+
+/** Whether production monetization identifiers are fully configured. */
+export function isProductionMonetizationConfigured(): boolean {
+	return (
+		Boolean(PRODUCTION_AD_UNITS.bannerToday) &&
+		Boolean(PRODUCTION_AD_UNITS.bannerStats) &&
+		Boolean(PRODUCTION_AD_UNITS.interstitial) &&
+		Boolean(APPMETRICA_PRODUCTION_API_KEY)
+	);
+}
+
+/** Returns production ad/metrica ids — test helper for release validation. */
+export function getProductionMonetizationSnapshot(): {
+	appMetricaApiKey: string;
+	bannerToday: string;
+	bannerStats: string;
+	interstitial: string;
+} {
+	return {
+		appMetricaApiKey: getAppMetricaApiKey(true),
+		bannerToday: getBannerAdUnitId('today', true),
+		bannerStats: getBannerAdUnitId('stats', true),
+		interstitial: getInterstitialAdUnitId(true),
+	};
 }

@@ -67,4 +67,5 @@ Screens own UI only. SQL and business rules live in `src/`.
 
 ## Privacy
 
-All data stays on device. No accounts, cloud sync, ads, or analytics in Phase 0–1.
+- [Privacy policy](docs/PRIVACY.md) — local data, photos, backup/export, AppMetrica, Yandex Ads
+- Garden data stays on device by default; optional analytics/ads SDKs are documented in the privacy policy

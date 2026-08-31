@@ -35,6 +35,7 @@ import {
 	getAppMetricaApiKey,
 	getBannerAdUnitId,
 	getInterstitialAdUnitId,
+	getProductionMonetizationSnapshot,
 	isMonetizationProductionBuild,
 } from '@/src/constants/monetization';
 import initSqlJs from 'sql.js';
@@ -274,11 +275,23 @@ describe('Phase 9 — monetization config', () => {
 		expect(typeof getInterstitialAdUnitId()).toBe('string');
 	});
 
-	it('does not substitute demo identifiers in production', () => {
-		expect(getBannerAdUnitId('today', true)).toBe('');
-		expect(getBannerAdUnitId('stats', true)).toBe('');
-		expect(getInterstitialAdUnitId(true)).toBe('');
-		expect(getAppMetricaApiKey(true)).toBe('');
+	it('uses approved production identifiers when production mode is forced', () => {
+		expect(getBannerAdUnitId('today', true)).toBe('R-M-19846495-1');
+		expect(getBannerAdUnitId('stats', true)).toBe('R-M-19846495-1');
+		expect(getInterstitialAdUnitId(true)).toBe('R-M-19846495-2');
+		expect(getAppMetricaApiKey(true)).toBe(
+			'0dc64afa-6bda-4b04-824c-bf253829ebe6'
+		);
+	});
+
+	it('never maps production mode to demo identifiers', () => {
+		const snapshot = getProductionMonetizationSnapshot();
+		expect(snapshot.bannerToday).not.toContain('demo');
+		expect(snapshot.bannerStats).not.toContain('demo');
+		expect(snapshot.interstitial).not.toContain('demo');
+		expect(snapshot.appMetricaApiKey).not.toBe(
+			'00000000-0000-0000-0000-000000000000'
+		);
 	});
 });
 
