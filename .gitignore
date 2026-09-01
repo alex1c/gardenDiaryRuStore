@@ -38,6 +38,10 @@ yarn-error.*
 .env*.local
 secrets/
 **/credentials.json
+credentials/*
+!credentials/keystore.properties.example
+keystore.properties
+**/keystore.properties
 
 # typescript
 *.tsbuildinfo

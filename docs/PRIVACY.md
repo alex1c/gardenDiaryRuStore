@@ -84,12 +84,12 @@ AppMetrica может собирать технические данные, пр
 
 По вопросам конфиденциальности и поддержки:
 
-**support@calculatorplatform.ru** *(замените на фактический адрес перед публикацией в RuStore, если он другой)*
+**alex1c-spb@yandex.ru**
 
 ---
 
-Публичный URL для RuStore (план):
+Публичный URL для RuStore:
 
-`https://alex1c.github.io/gardenDiaryRuStore/privacy`
+`https://alex1c.github.io/gardenDiaryRuStore/privacy.html`
 
-*(Требуется публикация через GitHub Pages — см. USER ACTION REQUIRED в отчёте Phase 11.)*
+*(Требуется публикация через GitHub Pages: Settings → Pages → Deploy from branch `main` / `docs`.)*
