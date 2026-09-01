@@ -73,7 +73,7 @@ try {
 		"keyPassword=$plain"
 	) -join "`n"
 
-	Set-Content -Path $propsPath -Value $props -Encoding UTF8 -NoNewline
+	Set-Content -Path $propsPath -Value $props -Encoding Ascii
 
 	Write-Host ''
 	Write-Host 'Keystore created successfully.' -ForegroundColor Green

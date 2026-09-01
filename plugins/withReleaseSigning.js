@@ -56,13 +56,10 @@ function applyReleaseSigning(buildGradle) {
     }`
 	);
 
-	// Force release builds to use production signing — never fall back to debug.
+	// Force release buildType only — avoid matching signingConfigs.release { }.
 	next = next.replace(
-		/release\s*\{[\s\S]*?signingConfig\s+signingConfigs\.debug/,
-		(match) => match.replace(
-			'signingConfig signingConfigs.debug',
-			'signingConfig signingConfigs.release'
-		)
+		/(buildTypes\s*\{[\s\S]*?^\s*release\s*\{[\s\S]*?)signingConfig\s+signingConfigs\.debug/m,
+		'$1signingConfig signingConfigs.release'
 	);
 
 	return next;
